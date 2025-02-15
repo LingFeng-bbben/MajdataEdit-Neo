@@ -42,7 +42,7 @@
       <Menu Grid.Row="0" Grid.ColumnSpan="4">
         <MenuItem Header="_File" >
           <MenuItem Header="_New"/>
-          <MenuItem Header="_Open"/>
+          <MenuItem Header="_Open" Command="{Binding OpenFile}"/>
           <MenuItem Header="_Save"/>
           <Separator/>
           <MenuItem Header="_Export Video"/>

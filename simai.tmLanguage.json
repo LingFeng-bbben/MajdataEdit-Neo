@@ -1,0 +1,72 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "simai",
+  "patterns": [
+    {
+      "name": "keyword.control.simai",
+      "match": "&\\w*="
+    },
+    {
+      "name": "string.quoted.double.bpm.simai",
+      "begin": "\\(",
+      "end": "\\)"
+    },
+    {
+      "name": "support.function.measure.simai",
+      "begin": "{",
+      "end": "}",
+      "patterns": [
+        {
+          "name":"constant.numeric",
+          "match": "-?\\+?[0-9]+\\.?[0-9]*"
+        }
+      ]
+    },
+    {
+      "name": "support.variable.taps.simai",
+      "match": "(?<![ABCDE])[1-8]?[1-8]b?x?b?(?=,|/)",
+      "patterns": [{ "include": "#break" },{ "include": "#ex" }]
+    },
+    {
+      "name": "support.type.period.simai",
+      "begin": "\\[",
+      "end": "\\]",
+      "patterns": [
+        {
+          "name": "constant.numeric.simai",
+          "match": "[0-9]+:[0-9]+"
+        }
+      ]
+    },
+    {
+      "name": "support.variable.slide.simai",
+      "match": "[1-8*][bx]*([<>^\\-qpwzsVv][qp]?[1-8]+)+b?",
+      "patterns": [{ "include": "#break" },{ "include": "#ex" }]
+    },
+    {
+      "name": "support.variable.touch.simai",
+      "match": "[ABCDE][1-8]?[bfxh]*",
+      "patterns": [{ "include": "#break" },{ "include": "#ex" }]
+    },
+    {
+      "name": "support.variable.hold.simai",
+      "match": "[1-8][bx]*h[bx]*",
+      "patterns": [{ "include": "#break" },{ "include": "#ex" }]
+    },
+    {
+      "name": "comment.line.simai",
+      "match": "\\|\\|.*"
+    }
+  ],
+  "repository": {
+    "break": {
+      "name": "break.simai",
+      "match": "b"
+    },
+    "ex": {
+      "name": "ex.simai",
+      "match": "x"
+    }
+  },
+  "scopeName": "maidata.simai"
+}

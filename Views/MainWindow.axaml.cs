@@ -1,6 +1,10 @@
 using Avalonia.Controls;
+using Avalonia.Interactivity;
+using Avalonia.Platform.Storage;
 using AvaloniaEdit;
 using AvaloniaEdit.TextMate;
+using System.IO;
+using System.Threading.Tasks;
 using TextMateSharp.Grammars;
 using TextMateSharp.Registry;
 
@@ -16,6 +20,6 @@ public partial class MainWindow : Window
         var _install = TextMate.InstallTextMate(_textEditor, _registryOptions);
         var registry = new Registry(_install.RegistryOptions);
 
-        _install.SetGrammarFile("E:\\repos\\Tml-Simai\\simai\\syntaxes\\simai.tmLanguage.json");
+        _install.SetGrammarFile("simai.tmLanguage.json");
     }
 }

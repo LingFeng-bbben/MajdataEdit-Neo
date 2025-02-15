@@ -1,0 +1,114 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:MajdataEdit_Neo.ViewModels"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:AvaloniaEdit="clr-namespace:AvaloniaEdit;assembly=AvaloniaEdit"
+        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="600"
+        x:Class="MajdataEdit_Neo.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Icon="/Assets/avalonia-logo.ico"
+        Title="MajdataEdit_Neo"
+        TransparencyLevelHint="AcrylicBlur"
+        Background="Transparent"
+        ExtendClientAreaToDecorationsHint="False">
+
+    <Design.DataContext>
+        <!-- This only sets the DataContext for the previewer in an IDE,
+             to set the actual DataContext for runtime, set the DataContext property in code (look at App.axaml.cs) -->
+        <vm:MainWindowViewModel/>
+    </Design.DataContext>
+  <Window.Resources>
+    <StreamGeometry x:Key="play_pause">M200-312v-336l240 168-240 168Zm320-8v-320h80v320h-80Zm160 0v-320h80v320h-80Z</StreamGeometry>
+    <StreamGeometry x:Key="stop">M320-640v320-320Zm-80 400v-480h480v480H240Zm80-80h320v-320H320v320Z</StreamGeometry>
+    <StreamGeometry x:Key="zoom_in">M440-440H200v-80h240v-240h80v240h240v80H520v240h-80v-240Z</StreamGeometry>
+    <StreamGeometry x:Key="zoom_out">M200-440v-80h560v80H200Z</StreamGeometry>
+
+  </Window.Resources>
+  
+  
+  <Panel>
+    <ExperimentalAcrylicBorder IsHitTestVisible="False">
+      <ExperimentalAcrylicBorder.Material>
+        <ExperimentalAcrylicMaterial
+            BackgroundSource="Digger"
+            TintColor="Black"
+            TintOpacity="1"
+            MaterialOpacity="0.65" />
+      </ExperimentalAcrylicBorder.Material>
+    </ExperimentalAcrylicBorder>
+    <Grid RowDefinitions="20,100,30,30,30,30,30,30,*,60,100"
+          ColumnDefinitions="5,60,60,*" >
+      <Menu Grid.Row="0" Grid.ColumnSpan="4">
+        <MenuItem Header="_File" >
+          <MenuItem Header="_New"/>
+          <MenuItem Header="_Open"/>
+          <MenuItem Header="_Save"/>
+          <Separator/>
+          <MenuItem Header="_Export Video"/>
+          <MenuItem Header="_Upload to Majnet"/>
+        </MenuItem>
+        <MenuItem Header="_Edit">
+          <MenuItem Header="Info"/>
+          <MenuItem Header="Mirror"/>
+          <MenuItem Header="Find and Replace"/>
+        </MenuItem>
+        <MenuItem Header="_Tools">
+          <MenuItem Header="BPM Tap"/>
+          <MenuItem Header="Compress bg.mp4"/>
+        </MenuItem>
+        <MenuItem Header="_About">
+          <MenuItem Header="Github"/>
+          <MenuItem Header="Majnet"/>
+        </MenuItem>
+        </Menu>
+
+
+        <Label Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Name="Time" FontSize="40" HorizontalAlignment="Center" VerticalAlignment="Center">1:00</Label>
+          <Label Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" VerticalAlignment="Center">Difficulty</Label>
+          <ComboBox Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="2" Name="Difficulty" Width="120" VerticalAlignment="Center">
+            <ComboBoxItem Content="EASY" />
+            <ComboBoxItem Content="BASIC" />
+            <ComboBoxItem Content="ADVANCED" />
+            <ComboBoxItem Content="EXPERT" />
+            <ComboBoxItem Content="MASTER" />
+            <ComboBoxItem Content="Re:MASTER" />
+            <ComboBoxItem Content="ORIGINAL" />
+          </ComboBox>
+          <Label Grid.Row="4" Grid.Column="1" Grid.ColumnSpan="2" VerticalAlignment="Center">Level</Label>
+          <TextBox Grid.Row="5" Grid.Column="1" Grid.ColumnSpan="2" Name="Level"></TextBox>
+          <Label Grid.Row="6" Grid.Column="1" Grid.ColumnSpan="2" VerticalAlignment="Center">Offset</Label>
+          <TextBox Grid.Row="7" Grid.Column="1" Grid.ColumnSpan="2" Name="First"></TextBox>
+          
+          
+
+            <Rectangle Grid.Row="8" />
+            <Button Grid.Row="9" Grid.Column="1" Height="50" Width="50" Margin="5">
+              <PathIcon Width="13" Data="{StaticResource stop}"/>
+            </Button>
+            <Button Grid.Row="9" Grid.Column="2" Height="50" Width="50" Margin="5">
+              <PathIcon Data="{StaticResource play_pause}"/>
+            </Button>
+        
+        <AvaloniaEdit:TextEditor Grid.Column="3" Grid.Row="1" Grid.RowSpan="9"
+                           Name="Editor" BorderBrush="#50FFFFFF" BorderThickness="0.5"
+                           Text="(123){4}1,E2,1w5[4:1],"
+                           ShowLineNumbers="True" Margin="5 5 5 5" Padding="5"
+                           FontFamily="Cascadia Code,Consolas,Menlo,Monospace"
+                            />
+       
+
+      <Rectangle Fill="Green" Height="100" Grid.Row="11" Grid.ColumnSpan="4"/>
+      <DockPanel Grid.Row="11" >
+        <Button DockPanel.Dock="Bottom" Width="30" Height="30" Margin="10">
+          <PathIcon Width="8" Data="{StaticResource zoom_out}"/>
+        </Button>
+        <Button DockPanel.Dock="Bottom" Width="30" Height="30" Margin="10">
+          <PathIcon Width="8" Data="{StaticResource zoom_in}"/>
+        </Button>
+      </DockPanel>
+ </Grid>
+
+    
+</Panel>
+</Window>

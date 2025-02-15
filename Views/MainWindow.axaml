@@ -34,7 +34,7 @@
             BackgroundSource="Digger"
             TintColor="Black"
             TintOpacity="1"
-            MaterialOpacity="0.65" />
+            MaterialOpacity="0.8" />
       </ExperimentalAcrylicBorder.Material>
     </ExperimentalAcrylicBorder>
     <Grid RowDefinitions="20,100,30,30,30,30,30,30,*,60,100"

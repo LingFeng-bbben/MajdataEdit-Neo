@@ -29,6 +29,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Reference Include="MajSimai">
+      <HintPath>..\MajSimai\bin\Debug\net9.0\MajSimai.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
     <Compile Update="ViewLocator.cs">
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </Compile>

@@ -19,11 +19,6 @@ namespace MajdataEdit_Neo.ViewModels;
 
 public partial class MainWindowViewModel : ViewModelBase
 {
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(FumenContent))]
-    [NotifyPropertyChangedFor(nameof(Level))]
-    private int selectedDifficulty = 0;
-
     public string Level
     {
         get
@@ -55,21 +50,63 @@ public partial class MainWindowViewModel : ViewModelBase
         //setter not working here, so using the event instead
     }
 
-    public void SetFumenContent(string content)
+    public async Task SetFumenContent(string content)
     {
         if (CurrentSimaiFile is null) return;
         var text = CurrentSimaiFile.Fumens[SelectedDifficulty];
         if (text is null) return;
         CurrentSimaiFile.Fumens[SelectedDifficulty] = content;
+        currentSimaiChart = await _simaiParser.ParseChartAsync(null, null, content);
     }
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(FumenContent))]
     [NotifyPropertyChangedFor(nameof(Level))]
+    private int selectedDifficulty = 0;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(FumenContent))]
+    [NotifyPropertyChangedFor(nameof(Level))]
     private SimaiFile? currentSimaiFile = null;
+    private SimaiChart? currentSimaiChart = null;
+
+    [ObservableProperty]
+    private TrackInfo? songTrackInfo = null;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(DisplayTime))]
+    private double trackTime = 0f;
+    public string DisplayTime
+    {
+        get
+        {
+            var minute = (int)TrackTime / 60;
+            double second = (int)(TrackTime - 60 * minute);
+            return string.Format("{0}:{1:00}", minute, second);
+        }
+    }
+    [ObservableProperty]
+    private float trackZoomLevel = 4f;
 
     private SimaiParser _simaiParser = new SimaiParser();
-    private string _currentPath = "";
+    private string _maidataDir = "";
+    private TrackReader _trackReader = new TrackReader();
+
+
+    public void SlideZoomLevel(float delta)
+    {
+        var level = TrackZoomLevel + delta;
+        if (level <= 0.1f) level = 0.1f;
+        if (level > 10f) level = 10f;
+        TrackZoomLevel = level;
+    }
+
+    public void SlideTrackTime(double delta)
+    {
+        var time = TrackTime - delta * 0.2 * TrackZoomLevel;
+        if (time < 0) time = 0;
+        else if (time > SongTrackInfo.Length) time = SongTrackInfo.Length;
+        TrackTime = time;
+    }
 
     public async Task OpenFile()
     {
@@ -77,9 +114,12 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             var file = await FileIOManager.DoOpenFilePickerAsync(FileIOManager.FileOpenerType.Maidata);
             if (file is null) return;
-            _currentPath = file.TryGetLocalPath();
-            if (_currentPath is null) return;
-            CurrentSimaiFile = await _simaiParser.ParseAsync(_currentPath);
+            var maidataPath = file.TryGetLocalPath();
+            if (maidataPath is null) return;
+            CurrentSimaiFile = await _simaiParser.ParseAsync(maidataPath);
+            var fileInfo = new FileInfo(maidataPath);
+            _maidataDir = fileInfo.Directory.FullName;
+            SongTrackInfo = _trackReader.ReadTrack(_maidataDir);
         }
         catch (Exception e)
         {

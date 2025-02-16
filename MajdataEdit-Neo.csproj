@@ -9,7 +9,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Folder Include="Models\" />
     <AvaloniaResource Include="Assets\**" />
   </ItemGroup>
 
@@ -26,12 +25,7 @@
     </PackageReference>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
     <PackageReference Include="Lingfeng-bbben.AvaloniaEdit.TextMate" Version="11.0.6" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Reference Include="MajSimai">
-      <HintPath>..\MajSimai\bin\Debug\net9.0\MajSimai.dll</HintPath>
-    </Reference>
+    <PackageReference Include="Lingfeng-bbben.MajSimai" Version="1.1.0" />
   </ItemGroup>
 
   <ItemGroup>

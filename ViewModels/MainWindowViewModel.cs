@@ -13,7 +13,8 @@ using System.Threading.Tasks;
 using MajSimai;
 using CommunityToolkit.Mvvm.ComponentModel;
 using AvaloniaEdit.Document;
-
+using System.Linq;
+using System.Timers;
 
 namespace MajdataEdit_Neo.ViewModels;
 
@@ -23,18 +24,18 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         get
         {
-            if (CurrentSimaiFile is null || CurrentSimaiFile.Levels[SelectedDifficulty] is null) return "";
-            var text = CurrentSimaiFile.Levels[SelectedDifficulty].Level;
+            if (CurrentSimaiFile is null || CurrentSimaiFile.Charts[SelectedDifficulty] is null) return "";
+            var text = CurrentSimaiFile.Charts[SelectedDifficulty].Level;
             if (text is null) return "";
             return text;
         }
         set
         {
-            if (CurrentSimaiFile is null || CurrentSimaiFile.Levels[SelectedDifficulty] is null) return;
-            var text = CurrentSimaiFile.Levels[SelectedDifficulty].Level;
+            if (CurrentSimaiFile is null || CurrentSimaiFile.Charts[SelectedDifficulty] is null) return;
+            var text = CurrentSimaiFile.Charts[SelectedDifficulty].Level;
             if (text is null) return;
             SetProperty(ref text, value);
-            CurrentSimaiFile.Levels[SelectedDifficulty].Level = text;
+            CurrentSimaiFile.Charts[SelectedDifficulty].Level = text;
         }
     }
 
@@ -43,9 +44,9 @@ public partial class MainWindowViewModel : ViewModelBase
         get
         {
             if (CurrentSimaiFile is null) return new TextDocument();
-            var text = CurrentSimaiFile.Fumens[SelectedDifficulty];
+            var text = CurrentSimaiFile.RawCharts[SelectedDifficulty];
             if(text is null) return new TextDocument();
-            return new TextDocument(CurrentSimaiFile.Fumens[SelectedDifficulty] as string);
+            return new TextDocument(CurrentSimaiFile.RawCharts[SelectedDifficulty] as string);
         }
         //setter not working here, so using the event instead
     }
@@ -53,10 +54,16 @@ public partial class MainWindowViewModel : ViewModelBase
     public async Task SetFumenContent(string content)
     {
         if (CurrentSimaiFile is null) return;
-        var text = CurrentSimaiFile.Fumens[SelectedDifficulty];
-        if (text is null) return;
-        CurrentSimaiFile.Fumens[SelectedDifficulty] = content;
-        currentSimaiChart = await _simaiParser.ParseChartAsync(null, null, content);
+        var text = CurrentSimaiFile.RawCharts[SelectedDifficulty];
+        if (text is null) CurrentSimaiFile.RawCharts[SelectedDifficulty] = "";
+        CurrentSimaiFile.RawCharts[SelectedDifficulty] = content;
+        try
+        {
+            CurrentSimaiChart = await _simaiParser.ParseChartAsync(null, null, content);
+        }catch (Exception ex)
+        {
+            Debug.WriteLine(ex);
+        }
     }
 
     [ObservableProperty]
@@ -67,8 +74,27 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(FumenContent))]
     [NotifyPropertyChangedFor(nameof(Level))]
+    [NotifyPropertyChangedFor(nameof(Offset))]
     private SimaiFile? currentSimaiFile = null;
+    [ObservableProperty]
     private SimaiChart? currentSimaiChart = null;
+
+    private float _offset = 0;
+    public float Offset
+    {
+        get
+        {
+            if (CurrentSimaiFile is null) return _offset;
+            _offset = CurrentSimaiFile.Offset;
+            return _offset;
+        }
+        set
+        {
+            if (CurrentSimaiFile is null) return;
+            CurrentSimaiFile.Offset = value;
+            SetProperty(ref _offset, value);
+        }
+    }
 
     [ObservableProperty]
     private TrackInfo? songTrackInfo = null;
@@ -85,12 +111,15 @@ public partial class MainWindowViewModel : ViewModelBase
         }
     }
     [ObservableProperty]
+    private double caretTime = 0f;
+    [ObservableProperty]
     private float trackZoomLevel = 4f;
 
     private SimaiParser _simaiParser = new SimaiParser();
     private string _maidataDir = "";
     private TrackReader _trackReader = new TrackReader();
 
+    public bool IsPointerPressedSimaiVisual { get; set; }
 
     public void SlideZoomLevel(float delta)
     {
@@ -100,12 +129,26 @@ public partial class MainWindowViewModel : ViewModelBase
         TrackZoomLevel = level;
     }
 
-    public void SlideTrackTime(double delta)
+    //returns raw postion in chart
+    public Point SlideTrackTime(double delta)
     {
+        if (SongTrackInfo is null) return new Point();
         var time = TrackTime - delta * 0.2 * TrackZoomLevel;
         if (time < 0) time = 0;
         else if (time > SongTrackInfo.Length) time = SongTrackInfo.Length;
         TrackTime = time;
+        if (CurrentSimaiChart is null) return new Point();
+        var nearestNote = CurrentSimaiChart.CommaTimings.MinBy(o => Math.Abs(o.Timing + Offset - time));
+        if (nearestNote is null) return new Point();
+        return new Point(nearestNote.RawTextPositionX, nearestNote.RawTextPositionY);
+    }
+
+    public void SetCaretTime(Point rawPostion)
+    {
+        if (CurrentSimaiChart is null) return;
+        var nearestNote = CurrentSimaiChart.CommaTimings.Where(o => o.RawTextPositionY == rawPostion.Y-1).MinBy(o => Math.Abs(o.RawTextPositionX - rawPostion.X));
+        if (nearestNote is null) return;
+        CaretTime = nearestNote.Timing;
     }
 
     public async Task OpenFile()

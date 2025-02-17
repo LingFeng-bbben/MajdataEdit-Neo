@@ -83,7 +83,7 @@
           <Label Grid.Row="4" Grid.Column="1" Grid.ColumnSpan="2" VerticalAlignment="Center">Level</Label>
           <TextBox Grid.Row="5" Grid.Column="1" Grid.ColumnSpan="2" Name="Level" Text="{Binding Level}"/>
           <Label Grid.Row="6" Grid.Column="1" Grid.ColumnSpan="2" VerticalAlignment="Center">Offset</Label>
-          <TextBox Grid.Row="7" Grid.Column="1" Grid.ColumnSpan="2" Name="First" Text="{Binding CurrentSimaiFile.Offset}"/>
+          <NumericUpDown Grid.Row="7" Grid.Column="1" Grid.ColumnSpan="2" Name="First" Value="{Binding Offset}" Increment="0.01"/>
           <CheckBox Grid.Row="8" Grid.Column="1" Grid.ColumnSpan="2" Margin="0 10 0 0">Follow Cusor</CheckBox>
           
           
@@ -107,7 +107,8 @@
       <controls:SimaiVisualizerControl Name="SimaiVisual"
                                        Height="100" Grid.Row="11" Grid.ColumnSpan="4"
                                        Time="{Binding TrackTime}" TrackIf="{Binding SongTrackInfo}"
-                                       ZoomLevel="{Binding TrackZoomLevel}"/>
+                                       ZoomLevel="{Binding TrackZoomLevel}" SimaiChart="{Binding CurrentSimaiChart}"
+                                       Offset="{Binding Offset}" CaretTime="{Binding CaretTime}"/>
       <DockPanel Grid.Row="11" >
         <Button Name="ZoomOut" DockPanel.Dock="Bottom" Width="30" Height="30" Margin="10">
           <PathIcon Width="8" Data="{StaticResource zoom_out}"/>

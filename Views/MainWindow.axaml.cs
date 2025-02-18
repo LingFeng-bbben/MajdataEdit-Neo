@@ -6,6 +6,7 @@ using AvaloniaEdit;
 using AvaloniaEdit.TextMate;
 using MajdataEdit_Neo.Controls;
 using MajdataEdit_Neo.ViewModels;
+using System;
 using System.Diagnostics;
 using System.IO;
 using System.Threading.Tasks;
@@ -26,6 +27,8 @@ public partial class MainWindow : Window
         textEditor = this.FindControl<TextEditor>("Editor");
         textEditor.TextChanged += TextEditor_TextChanged;
         textEditor.TextArea.Caret.PositionChanged += Caret_PositionChanged;
+        textEditor.Options.HighlightCurrentLine = true;
+        textEditor.Options.EnableTextDragDrop = true;
         var _registryOptions = new RegistryOptions(ThemeName.DarkPlus);
         var _install = TextMate.InstallTextMate(textEditor, _registryOptions);
         var registry = new Registry(_install.RegistryOptions);
@@ -37,6 +40,27 @@ public partial class MainWindow : Window
         //zoom buttons
         this.FindControl<Button>("ZoomIn").Click += ZoomIn_Click;
         this.FindControl<Button>("ZoomOut").Click += ZoomOut_Click;
+        //this window
+        this.KeyDown += MainWindow_KeyDown;
+        this.KeyUp += MainWindow_KeyUp;
+        this.LostFocus += MainWindow_LostFocus;
+    }
+
+    private void MainWindow_LostFocus(object? sender, RoutedEventArgs e)
+    {
+        isCtrlKeyDown = false;
+    }
+
+    bool isCtrlKeyDown = false;
+
+    private void MainWindow_KeyUp(object? sender, Avalonia.Input.KeyEventArgs e)
+    {
+        isCtrlKeyDown = false;
+    }
+
+    private void MainWindow_KeyDown(object? sender, Avalonia.Input.KeyEventArgs e)
+    {
+        isCtrlKeyDown = e.Key == Avalonia.Input.Key.LeftCtrl;
     }
 
     private void Caret_PositionChanged(object? sender, System.EventArgs e)
@@ -44,7 +68,7 @@ public partial class MainWindow : Window
         //Debug.WriteLine("Je;");
         var seek = textEditor.SelectionStart;
         var location = textEditor.Document.GetLocation(seek);
-        viewModel.SetCaretTime(new Point(location.Column, location.Line));
+        viewModel.SetCaretTime(new Point(location.Column, location.Line), isCtrlKeyDown);
         //Debug.WriteLine($"{location.Line} {location.Column}");
     }
 
@@ -75,8 +99,15 @@ public partial class MainWindow : Window
 
     private void SimaiVisual_PointerWheelChanged(object? sender, Avalonia.Input.PointerWheelEventArgs e)
     {
-        var docseek = viewModel.SlideTrackTime(e.Delta.Y);
-        SeekToDocPos(docseek);
+        if (isCtrlKeyDown)
+        {
+            viewModel.SlideZoomLevel(-0.3f * (float)e.Delta.Y);
+        }
+        else
+        {
+            var docseek = viewModel.SlideTrackTime(e.Delta.Y);
+            SeekToDocPos(docseek);
+        }
     }
 
     private async void TextEditor_TextChanged(object? sender, System.EventArgs e)
@@ -93,4 +124,15 @@ public partial class MainWindow : Window
         textEditor.Focus();
     }
 
+    private void MenuItem_PointerPressed(object? sender, Avalonia.Input.PointerPressedEventArgs e)
+    {
+        if (textEditor.SearchPanel.IsOpened)
+            textEditor.SearchPanel.Close();
+        else
+        {
+            textEditor.Focus();
+            textEditor.SearchPanel.Open();
+            
+        }
+    }
 }

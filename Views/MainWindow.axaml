@@ -38,53 +38,61 @@
             MaterialOpacity="0.75" />
       </ExperimentalAcrylicBorder.Material>
     </ExperimentalAcrylicBorder>
-    <Grid RowDefinitions="20,100,30,30,30,30,30,30,30,*,60,100"
+    <Grid RowDefinitions="20,100,*,*,*,*,*,*,*,*,60,100"
           ColumnDefinitions="5,60,60,*" >
       <Menu Grid.Row="0" Grid.ColumnSpan="4">
         <MenuItem Header="_File" >
           <MenuItem Header="_New"/>
           <MenuItem Header="_Open" Command="{Binding OpenFile}"/>
-          <MenuItem Header="_Save"/>
+          <MenuItem Header="_Save" Command="{Binding SaveFile}"/>
           <Separator/>
           <MenuItem Header="_Export Video"/>
           <MenuItem Header="_Upload to Majnet"/>
         </MenuItem>
         <MenuItem Header="_Edit">
           <MenuItem Header="Info"/>
+          <Separator/>
           <MenuItem Header="Mirror"/>
-          <MenuItem Header="Find and Replace"/>
+          <MenuItem Header="Find and Replace" PointerPressed="MenuItem_PointerPressed"/>
         </MenuItem>
         <MenuItem Header="_Tools">
           <MenuItem Header="BPM Tap"/>
           <MenuItem Header="Compress bg.mp4"/>
         </MenuItem>
         <MenuItem Header="_About">
+          <MenuItem Header="Discord"/>
+          <MenuItem Header="QQ"/>
+          <Separator/>
           <MenuItem Header="Github"/>
           <MenuItem Header="Majnet"/>
         </MenuItem>
         </Menu>
 
-
-        <Label Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Name="Time" FontSize="40" HorizontalAlignment="Center" VerticalAlignment="Center"
-               Content="{Binding DisplayTime}"/>
-          <Label Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" VerticalAlignment="Center">Difficulty</Label>
-          <ComboBox Grid.Row="3" Grid.Column="1" 
-                    Grid.ColumnSpan="2" Name="Difficulty" 
-                    Width="120" VerticalAlignment="Center"
-                    SelectedIndex="{Binding SelectedDifficulty}">
-            <ComboBoxItem Content="EASY" />
-            <ComboBoxItem Content="BASIC" />
-            <ComboBoxItem Content="ADVANCED" />
-            <ComboBoxItem Content="EXPERT" />
-            <ComboBoxItem Content="MASTER" />
-            <ComboBoxItem Content="Re:MASTER" />
-            <ComboBoxItem Content="ORIGINAL" />
-          </ComboBox>
-          <Label Grid.Row="4" Grid.Column="1" Grid.ColumnSpan="2" VerticalAlignment="Center">Level</Label>
-          <TextBox Grid.Row="5" Grid.Column="1" Grid.ColumnSpan="2" Name="Level" Text="{Binding Level}"/>
-          <Label Grid.Row="6" Grid.Column="1" Grid.ColumnSpan="2" VerticalAlignment="Center">Offset</Label>
-          <NumericUpDown Grid.Row="7" Grid.Column="1" Grid.ColumnSpan="2" Name="First" Value="{Binding Offset}" Increment="0.01"/>
-          <CheckBox Grid.Row="8" Grid.Column="1" Grid.ColumnSpan="2" Margin="0 10 0 0">Follow Cusor</CheckBox>
+      <StackPanel Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Grid.RowSpan="8">
+        <Label Height="100" Name="Time" FontSize="40" HorizontalAlignment="Center" VerticalAlignment="Center"
+               Content="{Binding DisplayTime}" Padding="0 30 0 0 "/>
+        <Label VerticalAlignment="Center">Difficulty</Label>
+        <ComboBox Name="Difficulty"
+                  Width="120" VerticalAlignment="Center"
+                  SelectedIndex="{Binding SelectedDifficulty}">
+          <ComboBoxItem Content="EASY" />
+          <ComboBoxItem Content="BASIC" />
+          <ComboBoxItem Content="ADVANCED" />
+          <ComboBoxItem Content="EXPERT" />
+          <ComboBoxItem Content="MASTER" />
+          <ComboBoxItem Content="Re:MASTER" />
+          <ComboBoxItem Content="ORIGINAL" />
+        </ComboBox>
+        <Label  VerticalAlignment="Center">Level</Label>
+        <TextBox  Name="Level" Text="{Binding Level}"/>
+        <Label  VerticalAlignment="Center">Designer</Label>
+        <TextBox  Name="Designer" Text="{Binding Designer}"/>
+        <Label  VerticalAlignment="Center">Offset</Label>
+        <NumericUpDown  Name="First" Value="{Binding Offset}" Increment="0.01"/>
+        <CheckBox Grid.Row="8" Grid.Column="1" Grid.ColumnSpan="2" Margin="0 10 0 0">Follow Cursor</CheckBox>
+      </StackPanel>
+        
+          
           
           
 

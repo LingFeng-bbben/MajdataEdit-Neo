@@ -39,6 +39,25 @@ public partial class MainWindowViewModel : ViewModelBase
         }
     }
 
+    public string Designer
+    {
+        get
+        {
+            if (CurrentSimaiFile is null || CurrentSimaiFile.Charts[SelectedDifficulty] is null) return "";
+            var text = CurrentSimaiFile.Charts[SelectedDifficulty].Designer;
+            if (text is null) return "";
+            return text;
+        }
+        set
+        {
+            if (CurrentSimaiFile is null || CurrentSimaiFile.Charts[SelectedDifficulty] is null) return;
+            var text = CurrentSimaiFile.Charts[SelectedDifficulty].Designer;
+            if (text is null) return;
+            SetProperty(ref text, value);
+            CurrentSimaiFile.Charts[SelectedDifficulty].Designer = text;
+        }
+    }
+
     public TextDocument FumenContent
     {
         get
@@ -69,11 +88,13 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(FumenContent))]
     [NotifyPropertyChangedFor(nameof(Level))]
+    [NotifyPropertyChangedFor(nameof(Designer))]
     private int selectedDifficulty = 0;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(FumenContent))]
     [NotifyPropertyChangedFor(nameof(Level))]
+    [NotifyPropertyChangedFor(nameof(Designer))]
     [NotifyPropertyChangedFor(nameof(Offset))]
     private SimaiFile? currentSimaiFile = null;
     [ObservableProperty]
@@ -143,12 +164,13 @@ public partial class MainWindowViewModel : ViewModelBase
         return new Point(nearestNote.RawTextPositionX, nearestNote.RawTextPositionY);
     }
 
-    public void SetCaretTime(Point rawPostion)
+    public void SetCaretTime(Point rawPostion, bool setTrackTime)
     {
         if (CurrentSimaiChart is null) return;
         var nearestNote = CurrentSimaiChart.CommaTimings.Where(o => o.RawTextPositionY == rawPostion.Y-1).MinBy(o => Math.Abs(o.RawTextPositionX - rawPostion.X));
         if (nearestNote is null) return;
         CaretTime = nearestNote.Timing;
+        if (setTrackTime) TrackTime = CaretTime+Offset;
     }
 
     public async Task OpenFile()
@@ -168,6 +190,12 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             Debug.WriteLine(e.Message);
         }
+    }
+
+    public void SaveFile()
+    {
+        if (CurrentSimaiFile is null) return;
+        _simaiParser.DeParse(CurrentSimaiFile, _maidataDir + "/maidata1.txt");
     }
 
     

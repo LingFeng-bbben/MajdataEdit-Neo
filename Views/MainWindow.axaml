@@ -14,20 +14,24 @@
         Background="Transparent"
         ExtendClientAreaToDecorationsHint="False">
 
-    <Design.DataContext>
-        <!-- This only sets the DataContext for the previewer in an IDE,
+  <Design.DataContext>
+    <!-- This only sets the DataContext for the previewer in an IDE,
              to set the actual DataContext for runtime, set the DataContext property in code (look at App.axaml.cs) -->
-        <vm:MainWindowViewModel/>
-    </Design.DataContext>
+    <vm:MainWindowViewModel/>
+  </Design.DataContext>
   <Window.Resources>
     <StreamGeometry x:Key="play_pause">M200-312v-336l240 168-240 168Zm320-8v-320h80v320h-80Zm160 0v-320h80v320h-80Z</StreamGeometry>
     <StreamGeometry x:Key="stop">M320-640v320-320Zm-80 400v-480h480v480H240Zm80-80h320v-320H320v320Z</StreamGeometry>
     <StreamGeometry x:Key="zoom_in">M440-440H200v-80h240v-240h80v240h240v80H520v240h-80v-240Z</StreamGeometry>
     <StreamGeometry x:Key="zoom_out">M200-440v-80h560v80H200Z</StreamGeometry>
-
+    <StreamGeometry x:Key="mirror_v">M320-440v-287L217-624l-57-56 200-200 200 200-57 56-103-103v287h-80ZM600-80 400-280l57-56 103 103v-287h80v287l103-103 57 56L600-80Z</StreamGeometry>
+    <StreamGeometry x:Key="mirror_h">M280-160 80-360l200-200 56 57-103 103h287v80H233l103 103-56 57Zm400-240-56-57 103-103H440v-80h287L624-743l56-57 200 200-200 200Z</StreamGeometry>
+    <StreamGeometry x:Key="mirror_180">M480-80 310-250l57-57 73 73v-206H235l73 72-58 58L80-480l169-169 57 57-72 72h206v-206l-73 73-57-57 170-170 170 170-57 57-73-73v206h205l-73-72 58-58 170 170-170 170-57-57 73-73H520v205l72-73 58 58L480-80Z</StreamGeometry>
+    <StreamGeometry x:Key="rotate_l">M440-80q-50-5-96-24.5T256-156l56-58q29 21 61.5 34t66.5 18v82Zm80 0v-82q104-15 172-93.5T760-438q0-117-81.5-198.5T480-718h-8l64 64-56 56-160-160 160-160 56 58-62 62h6q75 0 140.5 28.5t114 77q48.5 48.5 77 114T840-438q0 137-91 238.5T520-80ZM198-214q-32-42-51.5-88T122-398h82q5 34 18 66.5t34 61.5l-58 56Zm-76-264q6-51 25-98t51-86l58 56q-21 29-34 61.5T204-478h-82Z</StreamGeometry>
+    <StreamGeometry x:Key="rotate_r">M522-80v-82q34-5 66.5-18t61.5-34l56 58q-42 32-88 51.5T522-80Zm-80 0Q304-98 213-199.5T122-438q0-75 28.5-140.5t77-114q48.5-48.5 114-77T482-798h6l-62-62 56-58 160 160-160 160-56-56 64-64h-8q-117 0-198.5 81.5T202-438q0 104 68 182.5T442-162v82Zm322-134-58-56q21-29 34-61.5t18-66.5h82q-5 50-24.5 96T764-214Zm76-264h-82q-5-34-18-66.5T706-606l58-56q32 39 51 86t25 98Z</StreamGeometry>
   </Window.Resources>
-  
-  
+
+
   <Panel>
     <ExperimentalAcrylicBorder IsHitTestVisible="False">
       <ExperimentalAcrylicBorder.Material>
@@ -52,8 +56,33 @@
         <MenuItem Header="_Edit">
           <MenuItem Header="Info"/>
           <Separator/>
-          <MenuItem Header="Mirror"/>
-          <MenuItem Header="Find and Replace" PointerPressed="MenuItem_PointerPressed"/>
+          <MenuItem Header="Mirror Horizontally" CommandParameter="0" PointerPressed="Mirror_PointerPressed">
+            <MenuItem.Icon>
+              <PathIcon Data="{StaticResource mirror_h}"/>
+            </MenuItem.Icon>
+          </MenuItem>
+          <MenuItem Header="Mirror Vertically" CommandParameter="1" PointerPressed="Mirror_PointerPressed">
+            <MenuItem.Icon>
+              <PathIcon Data="{StaticResource mirror_v}"/>
+            </MenuItem.Icon>
+          </MenuItem>
+          <MenuItem Header="Mirror 180°" CommandParameter="2" PointerPressed="Mirror_PointerPressed">
+            <MenuItem.Icon>
+              <PathIcon Data="{StaticResource mirror_180}" PointerPressed="Mirror_PointerPressed"/>
+            </MenuItem.Icon>
+          </MenuItem>
+          <MenuItem Header="Rotate 45°" CommandParameter="3" PointerPressed="Mirror_PointerPressed">
+            <MenuItem.Icon>
+              <PathIcon Data="{StaticResource rotate_r}"/>
+            </MenuItem.Icon>
+          </MenuItem>
+          <MenuItem Header="Rotate -45°" CommandParameter="4" PointerPressed="Mirror_PointerPressed">
+            <MenuItem.Icon>
+              <PathIcon Data="{StaticResource rotate_l}"/>
+            </MenuItem.Icon>
+          </MenuItem>
+          <Separator/>
+          <MenuItem Header="Find and Replace" PointerPressed="FindReplace_PointerPressed"/>
         </MenuItem>
         <MenuItem Header="_Tools">
           <MenuItem Header="BPM Tap"/>
@@ -66,7 +95,7 @@
           <MenuItem Header="Github"/>
           <MenuItem Header="Majnet"/>
         </MenuItem>
-        </Menu>
+      </Menu>
 
       <StackPanel Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Grid.RowSpan="8">
         <Label Height="100" Name="Time" FontSize="40" HorizontalAlignment="Center" VerticalAlignment="Center"
@@ -91,25 +120,54 @@
         <NumericUpDown  Name="First" Value="{Binding Offset}" Increment="0.01"/>
         <CheckBox Grid.Row="8" Grid.Column="1" Grid.ColumnSpan="2" Margin="0 10 0 0">Follow Cursor</CheckBox>
       </StackPanel>
-        
-          
-          
-          
+      
+      <Rectangle Grid.Row="9" />
+      
+      <Button Grid.Row="10" Grid.Column="1" Height="50" Width="50" Margin="5">
+        <PathIcon Width="13" Data="{StaticResource stop}"/>
+      </Button>
+      <Button Grid.Row="10" Grid.Column="2" Height="50" Width="50" Margin="5">
+        <PathIcon Data="{StaticResource play_pause}"/>
+      </Button>
 
-            <Rectangle Grid.Row="9" />
-            <Button Grid.Row="10" Grid.Column="1" Height="50" Width="50" Margin="5">
-              <PathIcon Width="13" Data="{StaticResource stop}"/>
-            </Button>
-            <Button Grid.Row="10" Grid.Column="2" Height="50" Width="50" Margin="5">
-              <PathIcon Data="{StaticResource play_pause}"/>
-            </Button>
-        
-        <AvaloniaEdit:TextEditor Grid.Column="3" Grid.Row="1" Grid.RowSpan="10"
-                                 Document="{Binding FumenContent}"
-                           Name="Editor" BorderBrush="#50FFFFFF" BorderThickness="0.5"
-                           ShowLineNumbers="True" Margin="5 5 5 5" Padding="5"
-                           FontFamily="Cascadia Code,Consolas,Menlo,Monospace"
-                            />
+      <AvaloniaEdit:TextEditor Grid.Column="3" Grid.Row="1" Grid.RowSpan="10"
+                               Document="{Binding FumenContent}"
+                         Name="Editor" BorderBrush="#50FFFFFF" BorderThickness="0.5"
+                         ShowLineNumbers="True" Margin="5 5 5 5" Padding="5"
+                         FontFamily="Cascadia Code,Consolas,Menlo,Monospace"
+                            >
+        <AvaloniaEdit:TextEditor.ContextFlyout>
+          <MenuFlyout>
+          <MenuItem Header="Mirror Horizontally" CommandParameter="0" PointerPressed="Mirror_PointerPressed">
+            <MenuItem.Icon>
+              <PathIcon Data="{StaticResource mirror_h}"/>
+            </MenuItem.Icon>
+          </MenuItem>
+          <MenuItem Header="Mirror Vertically" CommandParameter="1" PointerPressed="Mirror_PointerPressed">
+            <MenuItem.Icon>
+              <PathIcon Data="{StaticResource mirror_v}"/>
+            </MenuItem.Icon>
+          </MenuItem>
+          <MenuItem Header="Mirror 180°" CommandParameter="2" PointerPressed="Mirror_PointerPressed">
+            <MenuItem.Icon>
+              <PathIcon Data="{StaticResource mirror_180}" PointerPressed="Mirror_PointerPressed"/>
+            </MenuItem.Icon>
+          </MenuItem>
+          <MenuItem Header="Rotate 45°" CommandParameter="3" PointerPressed="Mirror_PointerPressed">
+            <MenuItem.Icon>
+              <PathIcon Data="{StaticResource rotate_r}"/>
+            </MenuItem.Icon>
+          </MenuItem>
+          <MenuItem Header="Rotate -45°" CommandParameter="4" PointerPressed="Mirror_PointerPressed">
+            <MenuItem.Icon>
+              <PathIcon Data="{StaticResource rotate_l}"/>
+            </MenuItem.Icon>
+          </MenuItem>
+          <Separator/>
+          <MenuItem Header="Find and Replace" PointerPressed="FindReplace_PointerPressed"/>
+          </MenuFlyout>
+        </AvaloniaEdit:TextEditor.ContextFlyout>
+      </AvaloniaEdit:TextEditor>
 
 
       <controls:SimaiVisualizerControl Name="SimaiVisual"
@@ -125,8 +183,8 @@
           <PathIcon Width="8" Data="{StaticResource zoom_in}"/>
         </Button>
       </DockPanel>
- </Grid>
+    </Grid>
 
-    
-</Panel>
+
+  </Panel>
 </Window>

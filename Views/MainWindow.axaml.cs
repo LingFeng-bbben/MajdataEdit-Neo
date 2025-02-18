@@ -1,10 +1,13 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Data;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using AvaloniaEdit;
+using AvaloniaEdit.Editing;
 using AvaloniaEdit.TextMate;
 using MajdataEdit_Neo.Controls;
+using MajdataEdit_Neo.Models;
 using MajdataEdit_Neo.ViewModels;
 using System;
 using System.Diagnostics;
@@ -65,11 +68,9 @@ public partial class MainWindow : Window
 
     private void Caret_PositionChanged(object? sender, System.EventArgs e)
     {
-        //Debug.WriteLine("Je;");
         var seek = textEditor.SelectionStart;
         var location = textEditor.Document.GetLocation(seek);
         viewModel.SetCaretTime(new Point(location.Column, location.Line), isCtrlKeyDown);
-        //Debug.WriteLine($"{location.Line} {location.Column}");
     }
 
     static double? lastX = null;
@@ -124,15 +125,27 @@ public partial class MainWindow : Window
         textEditor.Focus();
     }
 
-    private void MenuItem_PointerPressed(object? sender, Avalonia.Input.PointerPressedEventArgs e)
+    private async void FindReplace_PointerPressed(object? sender, Avalonia.Input.PointerPressedEventArgs e)
     {
         if (textEditor.SearchPanel.IsOpened)
             textEditor.SearchPanel.Close();
         else
         {
-            textEditor.Focus();
+            textEditor.TextArea.Focus();
+            await Task.Delay(100); // focus will cost time, or the searchpanel buttons wont work.
             textEditor.SearchPanel.Open();
-            
         }
+    }
+
+    private void Mirror_PointerPressed(object? sender, Avalonia.Input.PointerPressedEventArgs e)
+    {
+        var menuitem = sender as MenuItem;
+        var text = textEditor.SelectedText;
+        Mirror(int.Parse(menuitem.CommandParameter.ToString()), text);
+    }
+
+    private void Mirror(int type, string text)
+    {
+        textEditor.SelectedText = SimaiMirror.HandleMirror(text, (SimaiMirror.HandleType)type);
     }
 }

@@ -198,5 +198,9 @@ public partial class MainWindowViewModel : ViewModelBase
         _simaiParser.DeParse(CurrentSimaiFile, _maidataDir + "/maidata1.txt");
     }
 
+    public void OpenBpmTapWindow()
+    {
+        new BpmTapWindow().Show();
+    }
     
 }

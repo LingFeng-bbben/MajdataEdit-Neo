@@ -54,7 +54,7 @@
           <MenuItem Header="_Upload to Majnet"/>
         </MenuItem>
         <MenuItem Header="_Edit">
-          <MenuItem Header="Info"/>
+          <MenuItem Header="Chart Info"/>
           <Separator/>
           <MenuItem Header="Mirror Horizontally" CommandParameter="0" PointerPressed="Mirror_PointerPressed">
             <MenuItem.Icon>
@@ -85,7 +85,7 @@
           <MenuItem Header="Find and Replace" PointerPressed="FindReplace_PointerPressed"/>
         </MenuItem>
         <MenuItem Header="_Tools">
-          <MenuItem Header="BPM Tap"/>
+          <MenuItem Header="BPM Tap" Command="{Binding OpenBpmTapWindow}"/>
           <MenuItem Header="Compress bg.mp4"/>
         </MenuItem>
         <MenuItem Header="_About">

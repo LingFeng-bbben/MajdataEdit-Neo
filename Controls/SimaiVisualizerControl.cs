@@ -161,6 +161,7 @@ class SimaiVisualizerControl : Control
                 var height = Bounds.Height;
                 //Actuall Drawing here
                 //make it smooth
+                //TODO; Add Deltatime
                 _lastTime += 0.2 * (_time - _lastTime);
                 _lastZoom += 0.2 * (_zoomLevel - _lastZoom);
 

@@ -148,15 +148,5 @@ public partial class MainWindow : Window
         }
     }
 
-    private void Mirror_PointerPressed(object? sender, Avalonia.Input.PointerPressedEventArgs e)
-    {
-        var menuitem = sender as MenuItem;
-        var text = textEditor.SelectedText;
-        Mirror(int.Parse(menuitem.CommandParameter.ToString()), text);
-    }
-
-    private void Mirror(int type, string text)
-    {
-        textEditor.SelectedText = SimaiMirror.HandleMirror(text, (SimaiMirror.HandleType)type);
-    }
+    
 }

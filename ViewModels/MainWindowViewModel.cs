@@ -18,6 +18,8 @@ using System.Timers;
 using System.Collections.ObjectModel;
 using MsBox.Avalonia;
 using Avalonia.Win32.Interop.Automation;
+using AvaloniaEdit;
+using Avalonia.Data.Converters;
 
 namespace MajdataEdit_Neo.ViewModels;
 
@@ -38,24 +40,22 @@ public partial class MainWindowViewModel : ViewModelBase
         }
     }
 
+    private string[] _level = new string[7];
     public string Level
     {
         get
         {
             if (CurrentSimaiFile is null || CurrentSimaiFile.Charts[SelectedDifficulty] is null) return "";
-            var text = CurrentSimaiFile.Charts[SelectedDifficulty].Level;
-            if (text is null) return "";
-            return text;
+            _level[selectedDifficulty] = CurrentSimaiFile.Charts[SelectedDifficulty].Level;
+            return _level[selectedDifficulty];
         }
         set
         {
             if (CurrentSimaiFile is null || CurrentSimaiFile.Charts[SelectedDifficulty] is null) return;
-            var text = CurrentSimaiFile.Charts[SelectedDifficulty].Level;
-            if (text is null) return;
-            SetProperty(ref text, value);
-            CurrentSimaiFile.Charts[SelectedDifficulty].Level = text;
+            CurrentSimaiFile.Charts[SelectedDifficulty].Level = value;
+            Debug.WriteLine(SelectedDifficulty);
+            SetProperty(ref _level[selectedDifficulty], value);
             OnPropertyChanged(nameof(CurrentSimaiFile));
-
         }
     }
 
@@ -177,11 +177,15 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     [NotifyPropertyChangedFor("WindowTitle")]
     private bool isSaved = true;
-    public string WindowTitle { get
+    public string WindowTitle
+    {
+        get
         {
             if (CurrentSimaiFile is null) return "MajdataEdit Neo";
             return "MajdataEdit Neo - " + CurrentSimaiFile.Title + (IsSaved ? "" : "*");
-        } }
+        }
+    }
+
     public void SlideZoomLevel(float delta)
     {
         var level = TrackZoomLevel + delta;
@@ -213,6 +217,38 @@ public partial class MainWindowViewModel : ViewModelBase
         if (setTrackTime) TrackTime = CaretTime+Offset;
     }
 
+    public async Task NewFile()
+    {
+        if (await AskSave()) return;
+        try
+        {
+            var file = await FileIOManager.DoOpenFilePickerAsync(FileIOManager.FileOpenerType.Track);
+            if (file is null) return;
+            var maidataPath = file.TryGetLocalPath();
+            if (maidataPath is null) return;
+            var fileInfo = new FileInfo(maidataPath);
+            _maidataDir = fileInfo.Directory.FullName;
+            if(File.Exists( _maidataDir+"/maidata.txt"))
+            {
+                var mainWindow = Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime;
+                await MessageBoxManager.GetMessageBoxStandard(
+                "Error", "Maidata Already Exist",
+                MsBox.Avalonia.Enums.ButtonEnum.Ok, MsBox.Avalonia.Enums.Icon.Error)
+                .ShowWindowDialogAsync(mainWindow.MainWindow);
+                return;
+            }
+            CurrentSimaiFile = SimaiFile.Empty("Set Title", "Set Artist");
+            SongTrackInfo = _trackReader.ReadTrack(_maidataDir);
+            IsSaved = false;
+            OpenChartInfoWindow();
+            //TODO: Trigger View Reload
+        }
+        catch (Exception e)
+        {
+            Debug.WriteLine(e.Message);
+        }
+    }
+
     public async Task OpenFile()
     {
         if (await AskSave()) return;
@@ -227,6 +263,7 @@ public partial class MainWindowViewModel : ViewModelBase
             _maidataDir = fileInfo.Directory.FullName;
             SongTrackInfo = _trackReader.ReadTrack(_maidataDir);
             IsSaved = true;
+            
             //TODO: Trigger View Reload
         }
         catch (Exception e)
@@ -288,9 +325,31 @@ public partial class MainWindowViewModel : ViewModelBase
         CurrentSimaiFile.Title = datacontext.Title;
         CurrentSimaiFile.Artist = datacontext.Artist;
         CurrentSimaiFile.Commands = datacontext.SimaiCommands.ToArray();
+        await Task.Delay(100);
         OnPropertyChanged(nameof(CurrentSimaiFile));
         //TODO: Trigger View Reload
     }
-    
-    
+
+    public void MirrorHorizontal(TextEditor editor)
+    {
+        editor.SelectedText = SimaiMirror.HandleMirror(editor.SelectedText, SimaiMirror.HandleType.LRMirror);
+    }
+    public void MirrorVertical(TextEditor editor)
+    {
+        editor.SelectedText = SimaiMirror.HandleMirror(editor.SelectedText, SimaiMirror.HandleType.UDMirror);
+    }
+    public void Mirror180(TextEditor editor)
+    {
+        editor.SelectedText = SimaiMirror.HandleMirror(editor.SelectedText, SimaiMirror.HandleType.HalfRotation);
+    }
+    public void Turn45(TextEditor editor)
+    {
+        editor.SelectedText = SimaiMirror.HandleMirror(editor.SelectedText, SimaiMirror.HandleType.Rotation45);
+    }
+    public void TurnNegative45(TextEditor editor)
+    {
+        Debug.WriteLine("Waht");
+        editor.SelectedText = SimaiMirror.HandleMirror(editor.SelectedText, SimaiMirror.HandleType.CcwRotation45);
+    }
+
 }

@@ -35,7 +35,6 @@
     <StreamGeometry x:Key="new">M440-240h80v-120h120v-80H520v-120h-80v120H320v80h120v120ZM240-80q-33 0-56.5-23.5T160-160v-640q0-33 23.5-56.5T240-880h320l240 240v480q0 33-23.5 56.5T720-80H240Zm280-520v-200H240v640h480v-440H520ZM240-800v200-200 640-640Z</StreamGeometry>
   </Window.Resources>
 
-
   <Panel>
     <ExperimentalAcrylicBorder IsHitTestVisible="False">
       <ExperimentalAcrylicBorder.Material>
@@ -50,7 +49,7 @@
           ColumnDefinitions="5,60,60,*" ZIndex="5" IsVisible="{Binding IsLoaded}">
       <Menu Grid.Row="0" Grid.ColumnSpan="4">
         <MenuItem Header="_File" >
-          <MenuItem Header="_New"/>
+          <MenuItem Header="_New" Command="{Binding NewFile}"/>
           <MenuItem Header="_Open" Command="{Binding OpenFile}"/>
           <MenuItem Header="_Save" Command="{Binding SaveFile}"/>
           <Separator/>
@@ -60,27 +59,27 @@
         <MenuItem Header="_Edit">
           <MenuItem Header="Find and Replace" PointerPressed="FindReplace_PointerPressed"/>
           <Separator/>
-          <MenuItem Header="Mirror Horizontally" CommandParameter="0" PointerPressed="Mirror_PointerPressed">
+          <MenuItem Header="Mirror Horizontally" CommandParameter="{Binding #Editor}" Command="{Binding MirrorHorizontal}">
             <MenuItem.Icon>
               <PathIcon Data="{StaticResource mirror_h}"/>
             </MenuItem.Icon>
           </MenuItem>
-          <MenuItem Header="Mirror Vertically" CommandParameter="1" PointerPressed="Mirror_PointerPressed">
+          <MenuItem Header="Mirror Vertically" CommandParameter="{Binding #Editor}" Command="{Binding MirrorVertical}">
             <MenuItem.Icon>
               <PathIcon Data="{StaticResource mirror_v}"/>
             </MenuItem.Icon>
           </MenuItem>
-          <MenuItem Header="Mirror 180°" CommandParameter="2" PointerPressed="Mirror_PointerPressed">
+          <MenuItem Header="Mirror 180°" CommandParameter="{Binding #Editor}" Command="{Binding Mirror180}">
             <MenuItem.Icon>
-              <PathIcon Data="{StaticResource mirror_180}" PointerPressed="Mirror_PointerPressed"/>
+              <PathIcon Data="{StaticResource mirror_180}"/>
             </MenuItem.Icon>
           </MenuItem>
-          <MenuItem Header="Rotate 45°" CommandParameter="3" PointerPressed="Mirror_PointerPressed">
+          <MenuItem Header="Rotate 45°" CommandParameter="{Binding #Editor}" Command="{Binding Turn45}">
             <MenuItem.Icon>
               <PathIcon Data="{StaticResource rotate_r}"/>
             </MenuItem.Icon>
           </MenuItem>
-          <MenuItem Header="Rotate -45°" CommandParameter="4" PointerPressed="Mirror_PointerPressed">
+          <MenuItem Header="Rotate -45°" CommandParameter="{Binding #Editor}" Command="{Binding TurnNegative45}">
             <MenuItem.Icon>
               <PathIcon Data="{StaticResource rotate_l}"/>
             </MenuItem.Icon>
@@ -124,8 +123,8 @@
         <NumericUpDown  Name="First" Value="{Binding Offset}" Increment="0.01"/>
         <CheckBox Grid.Row="8" Grid.Column="1" Grid.ColumnSpan="2" Margin="0 10 0 0">Follow Cursor</CheckBox>
       </StackPanel>
-      
-      
+
+
       <Button Grid.Row="3" Grid.Column="1" Height="50" Width="50" Margin="5">
         <PathIcon Width="13" Data="{StaticResource stop}"/>
       </Button>
@@ -135,39 +134,39 @@
 
       <AvaloniaEdit:TextEditor Grid.Column="3" Grid.Row="1" Grid.RowSpan="3"
                                Document="{Binding FumenContent}"
-                         Name="Editor" BorderBrush="#50FFFFFF" BorderThickness="0.5"
-                         ShowLineNumbers="True" Margin="5 5 5 5" Padding="5"
-                         FontFamily="Cascadia Code,Consolas,Menlo,Monospace"
+                               Name="Editor" BorderBrush="#50FFFFFF" BorderThickness="0.5"
+                               ShowLineNumbers="True" Margin="5 5 5 5" Padding="5"
+                               FontFamily="Cascadia Code,Consolas,Menlo,Monospace"
                             >
         <AvaloniaEdit:TextEditor.ContextFlyout>
           <MenuFlyout>
-          <MenuItem Header="Mirror Horizontally" CommandParameter="0" PointerPressed="Mirror_PointerPressed">
-            <MenuItem.Icon>
-              <PathIcon Data="{StaticResource mirror_h}"/>
-            </MenuItem.Icon>
-          </MenuItem>
-          <MenuItem Header="Mirror Vertically" CommandParameter="1" PointerPressed="Mirror_PointerPressed">
-            <MenuItem.Icon>
-              <PathIcon Data="{StaticResource mirror_v}"/>
-            </MenuItem.Icon>
-          </MenuItem>
-          <MenuItem Header="Mirror 180°" CommandParameter="2" PointerPressed="Mirror_PointerPressed">
-            <MenuItem.Icon>
-              <PathIcon Data="{StaticResource mirror_180}" PointerPressed="Mirror_PointerPressed"/>
-            </MenuItem.Icon>
-          </MenuItem>
-          <MenuItem Header="Rotate 45°" CommandParameter="3" PointerPressed="Mirror_PointerPressed">
-            <MenuItem.Icon>
-              <PathIcon Data="{StaticResource rotate_r}"/>
-            </MenuItem.Icon>
-          </MenuItem>
-          <MenuItem Header="Rotate -45°" CommandParameter="4" PointerPressed="Mirror_PointerPressed">
-            <MenuItem.Icon>
-              <PathIcon Data="{StaticResource rotate_l}"/>
-            </MenuItem.Icon>
-          </MenuItem>
-          <Separator/>
-          <MenuItem Header="Find and Replace" PointerPressed="FindReplace_PointerPressed"/>
+            <MenuItem Header="Mirror Horizontally" CommandParameter="{Binding #Editor}" Command="{Binding MirrorHorizontal}">
+              <MenuItem.Icon>
+                <PathIcon Data="{StaticResource mirror_h}"/>
+              </MenuItem.Icon>
+            </MenuItem>
+            <MenuItem Header="Mirror Vertically" CommandParameter="{Binding #Editor}" Command="{Binding MirrorVertical}">
+              <MenuItem.Icon>
+                <PathIcon Data="{StaticResource mirror_v}"/>
+              </MenuItem.Icon>
+            </MenuItem>
+            <MenuItem Header="Mirror 180°"  CommandParameter="{Binding #Editor}" Command="{Binding Mirror180}">
+              <MenuItem.Icon>
+                <PathIcon Data="{StaticResource mirror_180}"/>
+              </MenuItem.Icon>
+            </MenuItem>
+            <MenuItem Header="Rotate 45°" CommandParameter="{Binding #Editor}" Command="{Binding Turn45}">
+              <MenuItem.Icon>
+                <PathIcon Data="{StaticResource rotate_r}"/>
+              </MenuItem.Icon>
+            </MenuItem>
+            <MenuItem Header="Rotate -45°" CommandParameter="{Binding #Editor}" Command="{Binding TurnNegative45}">
+              <MenuItem.Icon>
+                <PathIcon Data="{StaticResource rotate_l}"/>
+              </MenuItem.Icon>
+            </MenuItem>
+            <Separator/>
+            <MenuItem Header="Find and Replace" PointerPressed="FindReplace_PointerPressed"/>
           </MenuFlyout>
         </AvaloniaEdit:TextEditor.ContextFlyout>
       </AvaloniaEdit:TextEditor>
@@ -189,7 +188,8 @@
     </Grid>
 
     <Grid RowDefinitions="150,*" ColumnDefinitions="*,*" Margin="200" ZIndex="5" IsVisible="{Binding !IsLoaded}">
-      <Button Grid.Column="0" Grid.Row="0" Height="150" Width="150" HorizontalAlignment="Center">
+      <Button Grid.Column="0" Grid.Row="0" Height="150" Width="150" HorizontalAlignment="Center"
+              Command="{Binding NewFile}">
         <PathIcon Data="{StaticResource new}"/>
       </Button>
       <Button Grid.Column="1" Grid.Row="0" Height="150" Width="150" HorizontalAlignment="Center"
@@ -198,11 +198,18 @@
       </Button>
       <Label Grid.Column="0" Grid.Row="1" FontSize="20" HorizontalAlignment="Center">New</Label>
       <Label Grid.Column="1" Grid.Row="1" FontSize="20" HorizontalAlignment="Center">Open</Label>
+      <Button IsVisible="False" HotKey="Ctrl+J" CommandParameter="{Binding #Editor}" Command="{Binding MirrorHorizontal}"/>
+      <Button IsVisible="False" HotKey="Ctrl+K" CommandParameter="{Binding #Editor}" Command="{Binding MirrorVertical}"/>
+      <Button IsVisible="False" HotKey="Ctrl+L" CommandParameter="{Binding #Editor}" Command="{Binding Mirror180}"/>
+      <Button IsVisible="False" HotKey="Ctrl+U" CommandParameter="{Binding #Editor}" Command="{Binding Turn45}"/>
+      <Button IsVisible="False" HotKey="Ctrl+I" CommandParameter="{Binding #Editor}" Command="{Binding TurnNegative45}"/>
+      <Button IsVisible="False" HotKey="Ctrl+S"  Command="{Binding SaveFile}"/>
+      <Button IsVisible="False" HotKey="Ctrl+O" Command="{Binding OpenFile}"/>
     </Grid>
     <DockPanel >
-      <Image DockPanel.Dock="Right" 
-             HorizontalAlignment="Right" 
-             Margin="0 0 -30 100" ZIndex="-9999" 
+      <Image DockPanel.Dock="Right"
+             HorizontalAlignment="Right"
+             Margin="0 0 -30 100" ZIndex="-9999"
              Opacity="0.5"
              Source="avares://MajdataEdit-Neo/Assets/xxlb.png"></Image>
     </DockPanel>

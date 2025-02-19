@@ -24,7 +24,13 @@ class FileIOManager
                 fptype = new FilePickerFileType("Maidata") { Patterns = ["maidata.txt"], MimeTypes = ["text/plain"] };
                 break;
             case FileOpenerType.Track:
-                fptype = new FilePickerFileType("Track") { Patterns = ["maidata.txt"], MimeTypes = ["text/plain"] };
+                fptype = new FilePickerFileType("Track") { Patterns = ["track.mp3","track.ogg"], MimeTypes = ["audio/mpeg", "audio/ogg"] };
+                break;
+            case FileOpenerType.Image:
+                fptype = new FilePickerFileType("Image") { Patterns = ["*.jpg","*.png"], MimeTypes = ["image/jpeg", "image/png"] };
+                break;
+            case FileOpenerType.Video:
+                fptype = new FilePickerFileType("Image") { Patterns = ["*.mp4"], MimeTypes = ["video/mp4"] };
                 break;
             default:
                 fptype = new FilePickerFileType("Null");
@@ -45,7 +51,7 @@ class FileIOManager
 
     public enum FileOpenerType
     {
-        Maidata, Track, Image
+        Maidata, Track, Image, Video
     }
 }
 

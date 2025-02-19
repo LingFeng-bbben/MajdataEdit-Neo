@@ -5,11 +5,13 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:AvaloniaEdit="clr-namespace:AvaloniaEdit;assembly=AvaloniaEdit"
         xmlns:controls="clr-namespace:MajdataEdit_Neo.Controls"
-        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="600"
+        mc:Ignorable="d" d:DesignWidth="750" d:DesignHeight="580"
+        MinHeight="580"
+        MinWidth="750"
         x:Class="MajdataEdit_Neo.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Icon="/Assets/avalonia-logo.ico"
-        Title="MajdataEdit_Neo"
+        Title="{Binding WindowTitle}"
         TransparencyLevelHint="AcrylicBlur"
         Background="Transparent"
         ExtendClientAreaToDecorationsHint="False">
@@ -29,6 +31,8 @@
     <StreamGeometry x:Key="mirror_180">M480-80 310-250l57-57 73 73v-206H235l73 72-58 58L80-480l169-169 57 57-72 72h206v-206l-73 73-57-57 170-170 170 170-57 57-73-73v206h205l-73-72 58-58 170 170-170 170-57-57 73-73H520v205l72-73 58 58L480-80Z</StreamGeometry>
     <StreamGeometry x:Key="rotate_l">M440-80q-50-5-96-24.5T256-156l56-58q29 21 61.5 34t66.5 18v82Zm80 0v-82q104-15 172-93.5T760-438q0-117-81.5-198.5T480-718h-8l64 64-56 56-160-160 160-160 56 58-62 62h6q75 0 140.5 28.5t114 77q48.5 48.5 77 114T840-438q0 137-91 238.5T520-80ZM198-214q-32-42-51.5-88T122-398h82q5 34 18 66.5t34 61.5l-58 56Zm-76-264q6-51 25-98t51-86l58 56q-21 29-34 61.5T204-478h-82Z</StreamGeometry>
     <StreamGeometry x:Key="rotate_r">M522-80v-82q34-5 66.5-18t61.5-34l56 58q-42 32-88 51.5T522-80Zm-80 0Q304-98 213-199.5T122-438q0-75 28.5-140.5t77-114q48.5-48.5 114-77T482-798h6l-62-62 56-58 160 160-160 160-56-56 64-64h-8q-117 0-198.5 81.5T202-438q0 104 68 182.5T442-162v82Zm322-134-58-56q21-29 34-61.5t18-66.5h82q-5 50-24.5 96T764-214Zm76-264h-82q-5-34-18-66.5T706-606l58-56q32 39 51 86t25 98Z</StreamGeometry>
+    <StreamGeometry x:Key="open">M160-160q-33 0-56.5-23.5T80-240v-480q0-33 23.5-56.5T160-800h240l80 80h320q33 0 56.5 23.5T880-640H447l-80-80H160v480l96-320h684L837-217q-8 26-29.5 41.5T760-160H160Zm84-80h516l72-240H316l-72 240Zm0 0 72-240-72 240Zm-84-400v-80 80Z</StreamGeometry>
+    <StreamGeometry x:Key="new">M440-240h80v-120h120v-80H520v-120h-80v120H320v80h120v120ZM240-80q-33 0-56.5-23.5T160-160v-640q0-33 23.5-56.5T240-880h320l240 240v480q0 33-23.5 56.5T720-80H240Zm280-520v-200H240v640h480v-440H520ZM240-800v200-200 640-640Z</StreamGeometry>
   </Window.Resources>
 
 
@@ -42,8 +46,8 @@
             MaterialOpacity="0.75" />
       </ExperimentalAcrylicBorder.Material>
     </ExperimentalAcrylicBorder>
-    <Grid RowDefinitions="20,100,*,*,*,*,*,*,*,*,60,100"
-          ColumnDefinitions="5,60,60,*" >
+    <Grid RowDefinitions="20,100,*,60,100"
+          ColumnDefinitions="5,60,60,*" ZIndex="5" IsVisible="{Binding IsLoaded}">
       <Menu Grid.Row="0" Grid.ColumnSpan="4">
         <MenuItem Header="_File" >
           <MenuItem Header="_New"/>
@@ -54,7 +58,7 @@
           <MenuItem Header="_Upload to Majnet"/>
         </MenuItem>
         <MenuItem Header="_Edit">
-          <MenuItem Header="Chart Info"/>
+          <MenuItem Header="Find and Replace" PointerPressed="FindReplace_PointerPressed"/>
           <Separator/>
           <MenuItem Header="Mirror Horizontally" CommandParameter="0" PointerPressed="Mirror_PointerPressed">
             <MenuItem.Icon>
@@ -82,7 +86,7 @@
             </MenuItem.Icon>
           </MenuItem>
           <Separator/>
-          <MenuItem Header="Find and Replace" PointerPressed="FindReplace_PointerPressed"/>
+          <MenuItem Header="Chart Info" Command="{Binding OpenChartInfoWindow}"/>
         </MenuItem>
         <MenuItem Header="_Tools">
           <MenuItem Header="BPM Tap" Command="{Binding OpenBpmTapWindow}"/>
@@ -121,16 +125,15 @@
         <CheckBox Grid.Row="8" Grid.Column="1" Grid.ColumnSpan="2" Margin="0 10 0 0">Follow Cursor</CheckBox>
       </StackPanel>
       
-      <Rectangle Grid.Row="9" />
       
-      <Button Grid.Row="10" Grid.Column="1" Height="50" Width="50" Margin="5">
+      <Button Grid.Row="3" Grid.Column="1" Height="50" Width="50" Margin="5">
         <PathIcon Width="13" Data="{StaticResource stop}"/>
       </Button>
-      <Button Grid.Row="10" Grid.Column="2" Height="50" Width="50" Margin="5">
+      <Button Grid.Row="3" Grid.Column="2" Height="50" Width="50" Margin="5">
         <PathIcon Data="{StaticResource play_pause}"/>
       </Button>
 
-      <AvaloniaEdit:TextEditor Grid.Column="3" Grid.Row="1" Grid.RowSpan="10"
+      <AvaloniaEdit:TextEditor Grid.Column="3" Grid.Row="1" Grid.RowSpan="3"
                                Document="{Binding FumenContent}"
                          Name="Editor" BorderBrush="#50FFFFFF" BorderThickness="0.5"
                          ShowLineNumbers="True" Margin="5 5 5 5" Padding="5"
@@ -171,11 +174,11 @@
 
 
       <controls:SimaiVisualizerControl Name="SimaiVisual"
-                                       Height="100" Grid.Row="11" Grid.ColumnSpan="4"
+                                       Height="100" Grid.Row="4" Grid.ColumnSpan="4"
                                        Time="{Binding TrackTime}" TrackIf="{Binding SongTrackInfo}"
                                        ZoomLevel="{Binding TrackZoomLevel}" SimaiChart="{Binding CurrentSimaiChart}"
                                        Offset="{Binding Offset}" CaretTime="{Binding CaretTime}"/>
-      <DockPanel Grid.Row="11" >
+      <DockPanel Grid.Row="4" >
         <Button Name="ZoomOut" DockPanel.Dock="Bottom" Width="30" Height="30" Margin="10">
           <PathIcon Width="8" Data="{StaticResource zoom_out}"/>
         </Button>
@@ -185,6 +188,24 @@
       </DockPanel>
     </Grid>
 
+    <Grid RowDefinitions="150,*" ColumnDefinitions="*,*" Margin="200" ZIndex="5" IsVisible="{Binding !IsLoaded}">
+      <Button Grid.Column="0" Grid.Row="0" Height="150" Width="150" HorizontalAlignment="Center">
+        <PathIcon Data="{StaticResource new}"/>
+      </Button>
+      <Button Grid.Column="1" Grid.Row="0" Height="150" Width="150" HorizontalAlignment="Center"
+              Command="{Binding OpenFile}">
+        <PathIcon Data="{StaticResource open}"/>
+      </Button>
+      <Label Grid.Column="0" Grid.Row="1" FontSize="20" HorizontalAlignment="Center">New</Label>
+      <Label Grid.Column="1" Grid.Row="1" FontSize="20" HorizontalAlignment="Center">Open</Label>
+    </Grid>
+    <DockPanel >
+      <Image DockPanel.Dock="Right" 
+             HorizontalAlignment="Right" 
+             Margin="0 0 -30 100" ZIndex="-9999" 
+             Opacity="0.5"
+             Source="avares://MajdataEdit-Neo/Assets/xxlb.png"></Image>
+    </DockPanel>
 
   </Panel>
 </Window>

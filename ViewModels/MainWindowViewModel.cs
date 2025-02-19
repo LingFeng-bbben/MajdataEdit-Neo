@@ -15,11 +15,29 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using AvaloniaEdit.Document;
 using System.Linq;
 using System.Timers;
+using System.Collections.ObjectModel;
+using MsBox.Avalonia;
+using Avalonia.Win32.Interop.Automation;
 
 namespace MajdataEdit_Neo.ViewModels;
 
 public partial class MainWindowViewModel : ViewModelBase
 {
+    public MainWindowViewModel()
+    {
+        PropertyChanged += MainWindowViewModel_PropertyChanged;
+    }
+
+    private void MainWindowViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        //Debug.WriteLine(e.PropertyName);
+        if (e.PropertyName == nameof(CurrentSimaiFile))
+        {
+            //Debug.WriteLine("SimaiFileChanged");
+            IsSaved = false;
+        }
+    }
+
     public string Level
     {
         get
@@ -36,6 +54,8 @@ public partial class MainWindowViewModel : ViewModelBase
             if (text is null) return;
             SetProperty(ref text, value);
             CurrentSimaiFile.Charts[SelectedDifficulty].Level = text;
+            OnPropertyChanged(nameof(CurrentSimaiFile));
+
         }
     }
 
@@ -55,6 +75,7 @@ public partial class MainWindowViewModel : ViewModelBase
             if (text is null) return;
             SetProperty(ref text, value);
             CurrentSimaiFile.Charts[SelectedDifficulty].Designer = text;
+            OnPropertyChanged(nameof(CurrentSimaiFile));
         }
     }
 
@@ -76,6 +97,7 @@ public partial class MainWindowViewModel : ViewModelBase
         var text = CurrentSimaiFile.RawCharts[SelectedDifficulty];
         if (text is null) CurrentSimaiFile.RawCharts[SelectedDifficulty] = "";
         CurrentSimaiFile.RawCharts[SelectedDifficulty] = content;
+        OnPropertyChanged(nameof(CurrentSimaiFile));
         try
         {
             CurrentSimaiChart = await _simaiParser.ParseChartAsync(null, null, content);
@@ -96,6 +118,7 @@ public partial class MainWindowViewModel : ViewModelBase
     [NotifyPropertyChangedFor(nameof(Level))]
     [NotifyPropertyChangedFor(nameof(Designer))]
     [NotifyPropertyChangedFor(nameof(Offset))]
+    [NotifyPropertyChangedFor(nameof(IsLoaded))]
     private SimaiFile? currentSimaiFile = null;
     [ObservableProperty]
     private SimaiChart? currentSimaiChart = null;
@@ -114,6 +137,7 @@ public partial class MainWindowViewModel : ViewModelBase
             if (CurrentSimaiFile is null) return;
             CurrentSimaiFile.Offset = value;
             SetProperty(ref _offset, value);
+            OnPropertyChanged(nameof(CurrentSimaiFile));
         }
     }
 
@@ -136,12 +160,28 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     private float trackZoomLevel = 4f;
 
+    public bool IsLoaded
+    {
+        get
+        {
+            return CurrentSimaiFile is not null;
+        }
+    }
+
     private SimaiParser _simaiParser = new SimaiParser();
     private string _maidataDir = "";
     private TrackReader _trackReader = new TrackReader();
 
     public bool IsPointerPressedSimaiVisual { get; set; }
 
+    [ObservableProperty]
+    [NotifyPropertyChangedFor("WindowTitle")]
+    private bool isSaved = true;
+    public string WindowTitle { get
+        {
+            if (CurrentSimaiFile is null) return "MajdataEdit Neo";
+            return "MajdataEdit Neo - " + CurrentSimaiFile.Title + (IsSaved ? "" : "*");
+        } }
     public void SlideZoomLevel(float delta)
     {
         var level = TrackZoomLevel + delta;
@@ -175,6 +215,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
     public async Task OpenFile()
     {
+        if (await AskSave()) return;
         try
         {
             var file = await FileIOManager.DoOpenFilePickerAsync(FileIOManager.FileOpenerType.Maidata);
@@ -185,6 +226,8 @@ public partial class MainWindowViewModel : ViewModelBase
             var fileInfo = new FileInfo(maidataPath);
             _maidataDir = fileInfo.Directory.FullName;
             SongTrackInfo = _trackReader.ReadTrack(_maidataDir);
+            IsSaved = true;
+            //TODO: Trigger View Reload
         }
         catch (Exception e)
         {
@@ -192,15 +235,62 @@ public partial class MainWindowViewModel : ViewModelBase
         }
     }
 
+    //return: isCancel
+    public async Task<bool> AskSave()
+    {
+        if (!IsSaved)
+        {
+            var mainWindow = Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime;
+            var result = await MessageBoxManager.GetMessageBoxStandard(
+                "Warning", "Chart not yet saved.\nSave it now?", 
+                MsBox.Avalonia.Enums.ButtonEnum.YesNoCancel, MsBox.Avalonia.Enums.Icon.Warning)
+                .ShowWindowDialogAsync(mainWindow.MainWindow);
+            if (result == MsBox.Avalonia.Enums.ButtonResult.Yes)
+                SaveFile();
+            if (result == MsBox.Avalonia.Enums.ButtonResult.No)
+                ;//Do nothing and do not cancel
+            else if (result == MsBox.Avalonia.Enums.ButtonResult.Cancel)
+                return true;
+            else if (result == MsBox.Avalonia.Enums.ButtonResult.None)
+                return true;//user exit
+        }
+        return false;
+    }
+
     public void SaveFile()
     {
         if (CurrentSimaiFile is null) return;
-        _simaiParser.DeParse(CurrentSimaiFile, _maidataDir + "/maidata1.txt");
+        IsSaved = true;
+        _simaiParser.DeParse(CurrentSimaiFile, _maidataDir + "/maidata.txt");
     }
 
     public void OpenBpmTapWindow()
     {
         new BpmTapWindow().Show();
     }
+
+    public async void OpenChartInfoWindow()
+    {
+        if (CurrentSimaiFile is null) return;
+        var mainWindow = Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime;
+        if (mainWindow is null || mainWindow.MainWindow is null) return;
+        var window = new ChartInfoWindow();
+        window.DataContext = new ChartInfoViewModel()
+        {
+            Title = CurrentSimaiFile.Title,
+            Artist = CurrentSimaiFile.Artist,
+            SimaiCommands = new ObservableCollection<SimaiCommand>(CurrentSimaiFile.Commands),
+            MaidataDir = _maidataDir
+        };
+        await window.ShowDialog(mainWindow.MainWindow);
+        var datacontext = window.DataContext as ChartInfoViewModel;
+        if (datacontext is null) throw new Exception("Wtf");
+        CurrentSimaiFile.Title = datacontext.Title;
+        CurrentSimaiFile.Artist = datacontext.Artist;
+        CurrentSimaiFile.Commands = datacontext.SimaiCommands.ToArray();
+        OnPropertyChanged(nameof(CurrentSimaiFile));
+        //TODO: Trigger View Reload
+    }
+    
     
 }

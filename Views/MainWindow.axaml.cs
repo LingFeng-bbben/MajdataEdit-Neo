@@ -47,6 +47,17 @@ public partial class MainWindow : Window
         this.KeyDown += MainWindow_KeyDown;
         this.KeyUp += MainWindow_KeyUp;
         this.LostFocus += MainWindow_LostFocus;
+        this.Closing += MainWindow_Closing;
+    }
+
+    bool haveAsked = false;
+    private async void MainWindow_Closing(object? sender, WindowClosingEventArgs e)
+    {
+        if (haveAsked) return;
+        e.Cancel = true;
+        haveAsked = true;
+        if (!await viewModel.AskSave()) this.Close();
+        else haveAsked = false;
     }
 
     private void MainWindow_LostFocus(object? sender, RoutedEventArgs e)

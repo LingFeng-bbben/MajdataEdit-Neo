@@ -2,7 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" 
+        mc:Ignorable="d"
         Width="180"
         Height="195"
         CanResize="False"
@@ -10,7 +10,7 @@
         TransparencyLevelHint="AcrylicBlur"
         Background="Transparent"
         Title="BpmTapWindow">
-  <StackPanel Margin="10 0 10 0" Spacing="10">
+  <Panel>
     <ExperimentalAcrylicBorder IsHitTestVisible="False">
       <ExperimentalAcrylicBorder.Material>
         <ExperimentalAcrylicMaterial
@@ -20,17 +20,21 @@
             MaterialOpacity="0.75" />
       </ExperimentalAcrylicBorder.Material>
     </ExperimentalAcrylicBorder>
-    
-    <Button Name="Tap_Button" HorizontalAlignment="Stretch" Height="130" Click="Tap_Button_Click">
-      <Label Name="Tap_Button_Text" HorizontalAlignment="Center" VerticalAlignment="Center"
-             FontSize="30" >Tap
-      </Label>
-    </Button>
-    
-    <Button HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Click="Reset_Button_Click">
-      <Label HorizontalAlignment="Center" VerticalAlignment="Center">
-        Reset
-      </Label>
-    </Button>
-  </StackPanel>
+    <StackPanel Margin="10" Spacing="10">
+
+
+      <Button Name="Tap_Button" HorizontalAlignment="Stretch" Height="130" Click="Tap_Button_Click">
+        <Label Name="Tap_Button_Text" HorizontalAlignment="Center" VerticalAlignment="Center"
+               FontSize="30" >
+          Tap
+        </Label>
+      </Button>
+
+      <Button HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Click="Reset_Button_Click">
+        <Label HorizontalAlignment="Center" VerticalAlignment="Center">
+          Reset
+        </Label>
+      </Button>
+    </StackPanel>
+  </Panel>
 </Window>

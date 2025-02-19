@@ -1,0 +1,67 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:MajdataEdit_Neo.ViewModels"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" Width="800" Height="400"
+        x:Class="MajdataEdit_Neo.Views.ChartInfoWindow"
+        x:DataType="vm:ChartInfoViewModel"
+        TransparencyLevelHint="AcrylicBlur"
+        Background="Transparent"
+        Title="ChartInfoWindow">
+  <Design.DataContext>
+    <!-- This only sets the DataContext for the previewer in an IDE,
+             to set the actual DataContext for runtime, set the DataContext property in code (look at App.axaml.cs) -->
+    <vm:ChartInfoViewModel/>
+  </Design.DataContext>
+  <Panel>
+    <ExperimentalAcrylicBorder IsHitTestVisible="False">
+      <ExperimentalAcrylicBorder.Material>
+        <ExperimentalAcrylicMaterial
+            BackgroundSource="Digger"
+            TintColor="Black"
+            TintOpacity="1"
+            MaterialOpacity="0.75" />
+      </ExperimentalAcrylicBorder.Material>
+    </ExperimentalAcrylicBorder>
+
+    <Grid ColumnDefinitions="300,*" Margin="10">
+      <StackPanel Grid.Column="0" VerticalAlignment="Stretch" Margin="10" Spacing="10">
+        <Image Height="280" Width="280" Source="{Binding Cover}" Stretch="Fill"></Image>
+        <Button Content="Select Background Image" Command="{Binding OpenBgCover}" HorizontalAlignment="Stretch"></Button>
+        <Button Content="Select Background Video" Command="{Binding OpenBgVideo}" HorizontalAlignment="Stretch"></Button>
+      </StackPanel>
+      <StackPanel Grid.Column="1" VerticalAlignment="Stretch" Margin="10" Spacing="10">
+        <Label>Title</Label>
+        <TextBox Text="{Binding Title}" />
+        <Label>Artist</Label>
+        <TextBox Text="{Binding Artist}"></TextBox>
+        <Label>Commands</Label>
+        <ScrollViewer Height="175">
+          <StackPanel>
+          <ItemsControl ItemsSource="{Binding SimaiCommands}">
+            <ItemsControl.ItemTemplate>
+              
+              <DataTemplate>
+                <StackPanel Margin="0 0 0 5" Orientation="Horizontal" Spacing="5">
+                  <Label Margin="0 3.5 0 0">&amp;</Label>
+                  <TextBox Width="192" Text="{Binding Prefix}"/>
+                  <Label Margin="0 3.5 0 0">=</Label>
+                  <TextBox Width="192" Text="{Binding Value}"/>
+                  <Button VerticalAlignment="Stretch" Grid.Column="2"
+                          Command="{Binding $parent[Window].((vm:ChartInfoViewModel)DataContext).DelCommand}" CommandParameter="{Binding $self.DataContext}">-</Button>
+                </StackPanel>
+              </DataTemplate>
+
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                  Command="{Binding AddNewCommand}">+</Button>
+          </StackPanel>
+        </ScrollViewer>
+        
+      </StackPanel>
+    </Grid>
+    
+  </Panel>
+</Window>

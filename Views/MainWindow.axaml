@@ -121,14 +121,17 @@
         <TextBox  Name="Designer" Text="{Binding Designer}"/>
         <Label  VerticalAlignment="Center">Offset</Label>
         <NumericUpDown  Name="First" Value="{Binding Offset}" Increment="0.01"/>
-        <CheckBox Grid.Row="8" Grid.Column="1" Grid.ColumnSpan="2" Margin="0 10 0 0">Follow Cursor</CheckBox>
+        <CheckBox Grid.Row="8" Grid.Column="1" Grid.ColumnSpan="2" Margin="0 10 0 0"
+                  IsChecked="{Binding IsFollowCursor}">Follow Cursor</CheckBox>
       </StackPanel>
 
 
-      <Button Grid.Row="3" Grid.Column="1" Height="50" Width="50" Margin="5">
+      <Button Grid.Row="3" Grid.Column="1" Height="50" Width="50" Margin="5"
+              CommandParameter="true" Command="{Binding Stop}">
         <PathIcon Width="13" Data="{StaticResource stop}"/>
       </Button>
-      <Button Grid.Row="3" Grid.Column="2" Height="50" Width="50" Margin="5">
+      <Button Grid.Row="3" Grid.Column="2" Height="50" Width="50" Margin="5"
+              CommandParameter="{Binding #Editor}" Command="{Binding PlayPause}">
         <PathIcon Data="{StaticResource play_pause}"/>
       </Button>
 

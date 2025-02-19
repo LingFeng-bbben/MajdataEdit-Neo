@@ -177,6 +177,8 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     [NotifyPropertyChangedFor("WindowTitle")]
     private bool isSaved = true;
+    [ObservableProperty]
+    private bool isFollowCursor;
     public string WindowTitle
     {
         get
@@ -201,6 +203,7 @@ public partial class MainWindowViewModel : ViewModelBase
         var time = TrackTime - delta * 0.2 * TrackZoomLevel;
         if (time < 0) time = 0;
         else if (time > SongTrackInfo.Length) time = SongTrackInfo.Length;
+        Stop(false);
         TrackTime = time;
         if (CurrentSimaiChart is null) return new Point();
         var nearestNote = CurrentSimaiChart.CommaTimings.MinBy(o => Math.Abs(o.Timing + Offset - time));
@@ -214,7 +217,10 @@ public partial class MainWindowViewModel : ViewModelBase
         var nearestNote = CurrentSimaiChart.CommaTimings.Where(o => o.RawTextPositionY == rawPostion.Y-1).MinBy(o => Math.Abs(o.RawTextPositionX - rawPostion.X));
         if (nearestNote is null) return;
         CaretTime = nearestNote.Timing;
-        if (setTrackTime) TrackTime = CaretTime+Offset;
+        if (setTrackTime) {
+            Stop(false);
+            TrackTime = CaretTime + Offset;
+        }
     }
 
     public async Task NewFile()
@@ -348,8 +354,48 @@ public partial class MainWindowViewModel : ViewModelBase
     }
     public void TurnNegative45(TextEditor editor)
     {
-        Debug.WriteLine("Waht");
         editor.SelectedText = SimaiMirror.HandleMirror(editor.SelectedText, SimaiMirror.HandleType.CcwRotation45);
     }
 
+    private double playStartTime = 0d;
+    public async void PlayPause(TextEditor textEditor)
+    {
+        if (_trackReader.isPlaying)
+        {
+            _trackReader.Pause();
+            return;
+        }
+        Stopwatch watch = new Stopwatch();
+        playStartTime = TrackTime;
+        _trackReader.Play(TrackTime);
+        watch.Start();
+        while (_trackReader.isPlaying)
+        {
+            TrackTime = watch.ElapsedMilliseconds/1000d + playStartTime;
+            if (IsFollowCursor)
+            {
+                var nearestNote = CurrentSimaiChart.CommaTimings.MinBy(o => Math.Abs(o.Timing + Offset - TrackTime));
+                if (nearestNote is null) continue;
+                
+                var point =  new Point(nearestNote.RawTextPositionX, nearestNote.RawTextPositionY);
+                SeekToDocPos(point, textEditor);
+            }
+            await Task.Delay(16);
+        }
+    }
+
+    public void Stop(bool isBackToStart = true)
+    {
+        _trackReader.Stop();
+        if(isBackToStart)
+            TrackTime = playStartTime;
+    }
+
+    public void SeekToDocPos(Point position, TextEditor editor)
+    {
+        var offset = editor.Document.GetOffset((int)position.Y + 1, (int)position.X);
+        editor.Select(offset, 0);
+        editor.ScrollTo((int)position.Y + 1, (int)position.X);
+        editor.Focus();
+    }
 }

@@ -20,6 +20,7 @@ using MsBox.Avalonia;
 using Avalonia.Win32.Interop.Automation;
 using AvaloniaEdit;
 using Avalonia.Data.Converters;
+using MsBox.Avalonia.Enums;
 
 namespace MajdataEdit_Neo.ViewModels;
 
@@ -151,9 +152,31 @@ public partial class MainWindowViewModel : ViewModelBase
     public MainWindowViewModel()
     {
         PropertyChanged += MainWindowViewModel_PropertyChanged;
+        ConnectToPlayerAsync();
     }
 
-    
+    public async Task<bool> ConnectToPlayerAsync()
+    {
+        if (!await PlayerConnection.ConnectAsync())
+        {
+            var mainWindow = (Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.MainWindow;
+            var msgBox = MessageBoxManager.GetMessageBoxStandard(
+                    title: "Warning",
+                    text: "Cannot connect to player",
+                    @enum: ButtonEnum.Ok,
+                    icon: Icon.Warning);
+            if (mainWindow is null)
+            {
+                await msgBox.ShowWindowAsync();
+            }
+            else
+            {
+                await msgBox.ShowWindowDialogAsync(mainWindow);
+            }
+            return false;
+        }
+        return true;
+    }
     public async Task SetFumenContent(string content)
     {
         if (CurrentSimaiFile is null) return;
@@ -261,19 +284,33 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         if (!IsSaved)
         {
-            var mainWindow = Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime;
-            var result = await MessageBoxManager.GetMessageBoxStandard(
-                "Warning", "Chart not yet saved.\nSave it now?", 
-                MsBox.Avalonia.Enums.ButtonEnum.YesNoCancel, MsBox.Avalonia.Enums.Icon.Warning)
-                .ShowWindowDialogAsync(mainWindow.MainWindow);
-            if (result == MsBox.Avalonia.Enums.ButtonResult.Yes)
-                SaveFile();
-            if (result == MsBox.Avalonia.Enums.ButtonResult.No)
-                ;//Do nothing and do not cancel
-            else if (result == MsBox.Avalonia.Enums.ButtonResult.Cancel)
-                return true;
-            else if (result == MsBox.Avalonia.Enums.ButtonResult.None)
-                return true;//user exit
+            var mainWindow = (Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.MainWindow;
+            var msgBox = MessageBoxManager.GetMessageBoxStandard(
+                title: "Warning", 
+                text : "Chart not yet saved.\nSave it now?", 
+                @enum: ButtonEnum.YesNoCancel, 
+                icon : Icon.Warning);
+            ButtonResult result;
+            if (mainWindow is null)
+            {
+                result = await msgBox.ShowWindowAsync();
+            }
+            else
+            {
+                result = await msgBox.ShowWindowDialogAsync(mainWindow);
+            }
+            
+            switch (result)
+            {
+                case ButtonResult.Yes:
+                    SaveFile();
+                    return false;
+                case ButtonResult.No:
+                    return false;
+                default:
+                    return true;
+
+            }
         }
         return false;
     }

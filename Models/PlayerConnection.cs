@@ -159,10 +159,7 @@ internal static class PlayerConnection
     }
     static async Task ConnectToPlayer()
     {
-        var helloPacket = new HttpRequestMessage(HttpMethod.Get, _stateApiUri)
-        {
-            Content = new StringContent("Hello!!!")
-        };
+        
         var token = _cts.Token;
         try
         {
@@ -172,6 +169,10 @@ internal static class PlayerConnection
                 try
                 {
                     using var cts = new CancellationTokenSource();
+                    using var helloPacket = new HttpRequestMessage(HttpMethod.Get, _stateApiUri)
+                    {
+                        Content = new StringContent("Hello!!!")
+                    };
                     cts.CancelAfter(2000);
                     var rsp = await _client.SendAsync(helloPacket, cts.Token);
                     rsp.EnsureSuccessStatusCode();

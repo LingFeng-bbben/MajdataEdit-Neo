@@ -25,22 +25,47 @@ namespace MajdataEdit_Neo.ViewModels;
 
 public partial class MainWindowViewModel : ViewModelBase
 {
-    public MainWindowViewModel()
+    public float Offset
     {
-        PropertyChanged += MainWindowViewModel_PropertyChanged;
-    }
-
-    private void MainWindowViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
-    {
-        //Debug.WriteLine(e.PropertyName);
-        if (e.PropertyName == nameof(CurrentSimaiFile))
+        get
         {
-            //Debug.WriteLine("SimaiFileChanged");
-            IsSaved = false;
+            if (CurrentSimaiFile is null) return _offset;
+            _offset = CurrentSimaiFile.Offset;
+            return _offset;
+        }
+        set
+        {
+            if (CurrentSimaiFile is null) return;
+            CurrentSimaiFile.Offset = value;
+            SetProperty(ref _offset, value);
+            OnPropertyChanged(nameof(CurrentSimaiFile));
         }
     }
-
-    private string[] _level = new string[7];
+    public string DisplayTime
+    {
+        get
+        {
+            var minute = (int)TrackTime / 60;
+            double second = (int)(TrackTime - 60 * minute);
+            return string.Format("{0}:{1:00}", minute, second);
+        }
+    }
+    public bool IsLoaded
+    {
+        get
+        {
+            return CurrentSimaiFile is not null;
+        }
+    }
+    public bool IsPointerPressedSimaiVisual { get; set; }
+    public string WindowTitle
+    {
+        get
+        {
+            if (CurrentSimaiFile is null) return "MajdataEdit Neo";
+            return "MajdataEdit Neo - " + CurrentSimaiFile.Title + (IsSaved ? "" : "*");
+        }
+    }
     public string Level
     {
         get
@@ -58,7 +83,6 @@ public partial class MainWindowViewModel : ViewModelBase
             OnPropertyChanged(nameof(CurrentSimaiFile));
         }
     }
-
     public string Designer
     {
         get
@@ -78,19 +102,58 @@ public partial class MainWindowViewModel : ViewModelBase
             OnPropertyChanged(nameof(CurrentSimaiFile));
         }
     }
-
     public TextDocument FumenContent
     {
         get
         {
             if (CurrentSimaiFile is null) return new TextDocument();
             var text = CurrentSimaiFile.RawCharts[SelectedDifficulty];
-            if(text is null) return new TextDocument();
+            if (text is null) return new TextDocument();
             return new TextDocument(CurrentSimaiFile.RawCharts[SelectedDifficulty] as string);
         }
         //setter not working here, so using the event instead
     }
 
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(FumenContent))]
+    [NotifyPropertyChangedFor(nameof(Level))]
+    [NotifyPropertyChangedFor(nameof(Designer))]
+    int selectedDifficulty = 0;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(FumenContent))]
+    [NotifyPropertyChangedFor(nameof(Level))]
+    [NotifyPropertyChangedFor(nameof(Designer))]
+    [NotifyPropertyChangedFor(nameof(Offset))]
+    [NotifyPropertyChangedFor(nameof(IsLoaded))]
+    SimaiFile? currentSimaiFile = null;
+    [ObservableProperty]
+    SimaiChart? currentSimaiChart = null;
+    [ObservableProperty]
+    double caretTime = 0f;
+    [ObservableProperty]
+    float trackZoomLevel = 4f;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor("WindowTitle")]
+    bool isSaved = true;
+    [ObservableProperty]
+    TrackInfo? songTrackInfo = null;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(DisplayTime))]
+    double trackTime = 0f;
+
+
+    float _offset = 0;
+    string _maidataDir = string.Empty;
+    readonly string[] _level = new string[7];
+
+    SimaiParser _simaiParser = new SimaiParser();
+    TrackReader _trackReader = new TrackReader();
+    public MainWindowViewModel()
+    {
+        PropertyChanged += MainWindowViewModel_PropertyChanged;
+    }
+
+    
     public async Task SetFumenContent(string content)
     {
         if (CurrentSimaiFile is null) return;
@@ -106,86 +169,6 @@ public partial class MainWindowViewModel : ViewModelBase
             Debug.WriteLine(ex);
         }
     }
-
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(FumenContent))]
-    [NotifyPropertyChangedFor(nameof(Level))]
-    [NotifyPropertyChangedFor(nameof(Designer))]
-    private int selectedDifficulty = 0;
-
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(FumenContent))]
-    [NotifyPropertyChangedFor(nameof(Level))]
-    [NotifyPropertyChangedFor(nameof(Designer))]
-    [NotifyPropertyChangedFor(nameof(Offset))]
-    [NotifyPropertyChangedFor(nameof(IsLoaded))]
-    private SimaiFile? currentSimaiFile = null;
-    [ObservableProperty]
-    private SimaiChart? currentSimaiChart = null;
-
-    private float _offset = 0;
-    public float Offset
-    {
-        get
-        {
-            if (CurrentSimaiFile is null) return _offset;
-            _offset = CurrentSimaiFile.Offset;
-            return _offset;
-        }
-        set
-        {
-            if (CurrentSimaiFile is null) return;
-            CurrentSimaiFile.Offset = value;
-            SetProperty(ref _offset, value);
-            OnPropertyChanged(nameof(CurrentSimaiFile));
-        }
-    }
-
-    [ObservableProperty]
-    private TrackInfo? songTrackInfo = null;
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(DisplayTime))]
-    private double trackTime = 0f;
-    public string DisplayTime
-    {
-        get
-        {
-            var minute = (int)TrackTime / 60;
-            double second = (int)(TrackTime - 60 * minute);
-            return string.Format("{0}:{1:00}", minute, second);
-        }
-    }
-    [ObservableProperty]
-    private double caretTime = 0f;
-    [ObservableProperty]
-    private float trackZoomLevel = 4f;
-
-    public bool IsLoaded
-    {
-        get
-        {
-            return CurrentSimaiFile is not null;
-        }
-    }
-
-    private SimaiParser _simaiParser = new SimaiParser();
-    private string _maidataDir = "";
-    private TrackReader _trackReader = new TrackReader();
-
-    public bool IsPointerPressedSimaiVisual { get; set; }
-
-    [ObservableProperty]
-    [NotifyPropertyChangedFor("WindowTitle")]
-    private bool isSaved = true;
-    public string WindowTitle
-    {
-        get
-        {
-            if (CurrentSimaiFile is null) return "MajdataEdit Neo";
-            return "MajdataEdit Neo - " + CurrentSimaiFile.Title + (IsSaved ? "" : "*");
-        }
-    }
-
     public void SlideZoomLevel(float delta)
     {
         var level = TrackZoomLevel + delta;
@@ -194,7 +177,11 @@ public partial class MainWindowViewModel : ViewModelBase
         TrackZoomLevel = level;
     }
 
-    //returns raw postion in chart
+    /// <summary>
+    /// returns raw postion in chart
+    /// </summary>
+    /// <param name="delta"></param>
+    /// <returns></returns>
     public Point SlideTrackTime(double delta)
     {
         if (SongTrackInfo is null) return new Point();
@@ -207,7 +194,6 @@ public partial class MainWindowViewModel : ViewModelBase
         if (nearestNote is null) return new Point();
         return new Point(nearestNote.RawTextPositionX, nearestNote.RawTextPositionY);
     }
-
     public void SetCaretTime(Point rawPostion, bool setTrackTime)
     {
         if (CurrentSimaiChart is null) return;
@@ -216,7 +202,6 @@ public partial class MainWindowViewModel : ViewModelBase
         CaretTime = nearestNote.Timing;
         if (setTrackTime) TrackTime = CaretTime+Offset;
     }
-
     public async Task NewFile()
     {
         if (await AskSave()) return;
@@ -248,7 +233,6 @@ public partial class MainWindowViewModel : ViewModelBase
             Debug.WriteLine(e.Message);
         }
     }
-
     public async Task OpenFile()
     {
         if (await AskSave()) return;
@@ -293,19 +277,16 @@ public partial class MainWindowViewModel : ViewModelBase
         }
         return false;
     }
-
     public void SaveFile()
     {
         if (CurrentSimaiFile is null) return;
         IsSaved = true;
         _simaiParser.DeParse(CurrentSimaiFile, _maidataDir + "/maidata.txt");
     }
-
     public void OpenBpmTapWindow()
     {
         new BpmTapWindow().Show();
     }
-
     public async void OpenChartInfoWindow()
     {
         if (CurrentSimaiFile is null) return;
@@ -329,7 +310,6 @@ public partial class MainWindowViewModel : ViewModelBase
         OnPropertyChanged(nameof(CurrentSimaiFile));
         //TODO: Trigger View Reload
     }
-
     public void MirrorHorizontal(TextEditor editor)
     {
         editor.SelectedText = SimaiMirror.HandleMirror(editor.SelectedText, SimaiMirror.HandleType.LRMirror);
@@ -351,5 +331,13 @@ public partial class MainWindowViewModel : ViewModelBase
         Debug.WriteLine("Waht");
         editor.SelectedText = SimaiMirror.HandleMirror(editor.SelectedText, SimaiMirror.HandleType.CcwRotation45);
     }
-
+    private void MainWindowViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        //Debug.WriteLine(e.PropertyName);
+        if (e.PropertyName == nameof(CurrentSimaiFile))
+        {
+            //Debug.WriteLine("SimaiFileChanged");
+            IsSaved = false;
+        }
+    }
 }

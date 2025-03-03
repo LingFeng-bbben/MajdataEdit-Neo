@@ -19,13 +19,39 @@ class TrackReader : IDisposable
     public void Dispose()
     {
         Bass.Free();
+        Bass.StreamFree(bgmStream);
     }
 
+    public void Play(double time)
+    {
+        Bass.ChannelSetPosition(bgmStream, Bass.ChannelSeconds2Bytes(bgmStream, time));
+        Bass.ChannelPlay(bgmStream);
+    }
+    public void Pause()
+    {
+        Bass.ChannelPause(bgmStream);
+    }
+    public void Stop()
+    {
+        Bass.ChannelStop(bgmStream);
+    }
+
+    public double CurrentPosition()
+    {
+        return Bass.ChannelBytes2Seconds(bgmStream, Bass.ChannelGetPosition(bgmStream));
+    }
+
+    public bool isPlaying { get { return Bass.ChannelIsActive(bgmStream)==PlaybackState.Playing; } }
+
+    int bgmStream =0;
     public TrackInfo ReadTrack (string dirpath)
     {
         var useOgg = File.Exists(dirpath + "/track.ogg");
         var filePath = dirpath + "/track" + (useOgg ? ".ogg" : ".mp3");
+        if(bgmStream is not 0)
+        Bass.StreamFree(bgmStream);
         var bgmDecode = Bass.CreateStream(filePath, 0L, 0L, BassFlags.Decode);
+        bgmStream = Bass.CreateStream(filePath, 0, 0, BassFlags.Prescan);
         var bgmSample = Bass.SampleLoad(filePath, 0, 0, 1, BassFlags.Default);
         try
         {

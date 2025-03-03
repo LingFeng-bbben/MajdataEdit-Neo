@@ -101,7 +101,7 @@ public partial class MainWindow : Window
         if (point.Properties.IsLeftButtonPressed)
         {
             var docseek = viewModel.SlideTrackTime((float)delta*10f/Width);
-            SeekToDocPos(docseek);
+            viewModel.SeekToDocPos(docseek,textEditor);
         }
         lastX = x;
     }
@@ -124,7 +124,7 @@ public partial class MainWindow : Window
         else
         {
             var docseek = viewModel.SlideTrackTime(e.Delta.Y);
-            SeekToDocPos(docseek);
+            viewModel.SeekToDocPos(docseek,textEditor);
         }
     }
 
@@ -132,14 +132,6 @@ public partial class MainWindow : Window
     {
         //TODO: add timer
         await viewModel.SetFumenContent(((TextEditor)sender).Text);
-    }
-
-    private void SeekToDocPos(Point position)
-    {
-        var offset = textEditor.Document.GetOffset((int)position.Y+1, (int)position.X);
-        textEditor.Select(offset, 0);
-        textEditor.ScrollTo((int)position.Y + 1, (int)position.X);
-        textEditor.Focus();
     }
 
     private async void FindReplace_PointerPressed(object? sender, Avalonia.Input.PointerPressedEventArgs e)

@@ -174,17 +174,21 @@ public partial class MainWindowViewModel : ViewModelBase
         }
         return true;
     }
-    public async Task SetFumenContent(string content)
+
+    private SimaiParser _simaiParser = new SimaiParser();
+    private string _maidataDir = "";
+    private TrackReader _trackReader = new TrackReader();
+
+    public bool IsPointerPressedSimaiVisual { get; set; }
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor("WindowTitle")]
+    private bool isSaved = true;
+    [ObservableProperty]
+    private bool isFollowCursor;
+    public string WindowTitle
     {
-        if (CurrentSimaiFile is null) return;
-        var text = CurrentSimaiFile.RawCharts[SelectedDifficulty];
-        if (text is null) CurrentSimaiFile.RawCharts[SelectedDifficulty] = "";
-        CurrentSimaiFile.RawCharts[SelectedDifficulty] = content;
-        OnPropertyChanged(nameof(CurrentSimaiFile));
-        try
-        {
-            CurrentSimaiChart = await _simaiParser.ParseChartAsync(null, null, content);
-        }catch (Exception ex)
+        get
         {
             Debug.WriteLine(ex);
         }
@@ -208,6 +212,7 @@ public partial class MainWindowViewModel : ViewModelBase
         var time = TrackTime - delta * 0.2 * TrackZoomLevel;
         if (time < 0) time = 0;
         else if (time > SongTrackInfo.Length) time = SongTrackInfo.Length;
+        Stop(false);
         TrackTime = time;
         if (CurrentSimaiChart is null) return new Point();
         var nearestNote = CurrentSimaiChart.CommaTimings.MinBy(o => Math.Abs(o.Timing + Offset - time));
@@ -220,8 +225,12 @@ public partial class MainWindowViewModel : ViewModelBase
         var nearestNote = CurrentSimaiChart.CommaTimings.Where(o => o.RawTextPositionY == rawPostion.Y-1).MinBy(o => Math.Abs(o.RawTextPositionX - rawPostion.X));
         if (nearestNote is null) return;
         CaretTime = nearestNote.Timing;
-        if (setTrackTime) TrackTime = CaretTime+Offset;
+        if (setTrackTime) {
+            Stop(false);
+            TrackTime = CaretTime + Offset;
+        }
     }
+
     public async Task NewFile()
     {
         if (await AskSave()) return;
@@ -373,16 +382,48 @@ public partial class MainWindowViewModel : ViewModelBase
     }
     public void TurnNegative45(TextEditor editor)
     {
-        Debug.WriteLine("Waht");
         editor.SelectedText = SimaiMirror.HandleMirror(editor.SelectedText, SimaiMirror.HandleType.CcwRotation45);
     }
-    private void MainWindowViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+
+    private double playStartTime = 0d;
+    public async void PlayPause(TextEditor textEditor)
     {
-        //Debug.WriteLine(e.PropertyName);
-        if (e.PropertyName == nameof(CurrentSimaiFile))
+        if (_trackReader.isPlaying)
         {
-            Debug.WriteLine("SimaiFileChanged");
-            IsSaved = false;
+            _trackReader.Pause();
+            return;
         }
+        Stopwatch watch = new Stopwatch();
+        playStartTime = TrackTime;
+        _trackReader.Play(TrackTime);
+        watch.Start();
+        while (_trackReader.isPlaying)
+        {
+            TrackTime = watch.ElapsedMilliseconds/1000d + playStartTime;
+            if (IsFollowCursor)
+            {
+                var nearestNote = CurrentSimaiChart.CommaTimings.MinBy(o => Math.Abs(o.Timing + Offset - TrackTime));
+                if (nearestNote is null) continue;
+                
+                var point =  new Point(nearestNote.RawTextPositionX, nearestNote.RawTextPositionY);
+                SeekToDocPos(point, textEditor);
+            }
+            await Task.Delay(16);
+        }
+    }
+
+    public void Stop(bool isBackToStart = true)
+    {
+        _trackReader.Stop();
+        if(isBackToStart)
+            TrackTime = playStartTime;
+    }
+
+    public void SeekToDocPos(Point position, TextEditor editor)
+    {
+        var offset = editor.Document.GetOffset((int)position.Y + 1, (int)position.X);
+        editor.Select(offset, 0);
+        editor.ScrollTo((int)position.Y + 1, (int)position.X);
+        editor.Focus();
     }
 }

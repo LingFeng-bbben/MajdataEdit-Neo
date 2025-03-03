@@ -18,6 +18,7 @@ using System.Collections.ObjectModel;
 using MsBox.Avalonia;
 using AvaloniaEdit;
 using MsBox.Avalonia.Enums;
+using MajdataPlay.View.Types;
 
 namespace MajdataEdit_Neo.ViewModels;
 
@@ -392,16 +393,36 @@ public partial class MainWindowViewModel : ViewModelBase
     private double playStartTime = 0d;
     public async void PlayPause(TextEditor textEditor)
     {
-        if (_playerConnection.ViewSummary.State == MajdataPlay.View.Types.ViewStatus.Playing)
+        if(!_playerConnection.IsConnected)
         {
-            await _playerConnection.PauseAsync();
-            return;
+            if (!await _playerConnection.ConnectAsync())
+            {
+                var mainWindow = (Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.MainWindow;
+                var msgBox = MessageBoxManager.GetMessageBoxStandard(
+                        title: "Warning",
+                        text: "Cannot connect to player",
+                        @enum: ButtonEnum.Ok,
+                        icon: Icon.Warning);
+                if (mainWindow is null)
+                {
+                    await msgBox.ShowWindowAsync();
+                }
+                else
+                {
+                    await msgBox.ShowWindowDialogAsync(mainWindow);
+                }
+                return;
+            }
         }
-        if (_playerConnection.ViewSummary.State == MajdataPlay.View.Types.ViewStatus.Paused)
+        switch(_playerConnection.ViewSummary.State)
         {
-            await _playerConnection.ResumeAsync();
-            playStartTime = TrackTime;
-            return;
+            case ViewStatus.Playing:
+                await _playerConnection.PauseAsync();
+                return;
+            case ViewStatus.Paused:
+                await _playerConnection.ResumeAsync();
+                playStartTime = TrackTime;
+                return;
         }
 
         playStartTime = TrackTime;

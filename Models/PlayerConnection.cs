@@ -21,6 +21,8 @@ internal class PlayerConnection : IDisposable
     public ViewSummary ViewSummary => _viewSummary;
     private ViewSummary _viewSummary;
 
+    public delegate void NotifyPlayStartedEventHandler(object sender, MajWsResponseType e);
+    public event NotifyPlayStartedEventHandler? OnPlayStarted;
     WebSocket _client = new("ws://127.0.0.1:8083/majdata");
     readonly static JsonSerializerOptions JSON_READER_OPTIONS = new()
     {
@@ -34,7 +36,7 @@ internal class PlayerConnection : IDisposable
         if (IsConnected)
             return true;
         using var cts = new CancellationTokenSource();
-        //cts.CancelAfter(5000);
+        cts.CancelAfter(2000);
 
         return await ConnectToPlayer(url, cts.Token);
     }
@@ -50,8 +52,8 @@ internal class PlayerConnection : IDisposable
             _client.Connect();
             while (!_client.IsAlive)
             {
-                await Task.Yield();
                 token.ThrowIfCancellationRequested();
+                await Task.Yield();
             }
             return true;
         }
@@ -73,11 +75,15 @@ internal class PlayerConnection : IDisposable
     {
         await Task.Run(() =>
         {
-            var resp = JsonSerializer.Deserialize<MajWsResponseBase>(args.Data);
+            var resp = JsonSerializer.Deserialize<MajWsResponseBase>(args.Data,JSON_READER_OPTIONS);
             switch (resp.responseType) {
                 case MajWsResponseType.Heartbeat:
-                    var status = JsonSerializer.Deserialize<ViewSummary>(resp.responseData.ToString());
+                    var status = JsonSerializer.Deserialize<ViewSummary>(resp.responseData.ToString(),JSON_READER_OPTIONS);
                     _viewSummary = status;
+                    break;
+                case MajWsResponseType.PlayResumed:
+                case MajWsResponseType.PlayStarted:
+                    OnPlayStarted?.Invoke(this, resp.responseType);
                     break;
                 default:
                     Debug.WriteLine(args.Data);
@@ -179,9 +185,8 @@ internal class PlayerConnection : IDisposable
     async Task SendAsync(MajWsRequestBase req)
     {
         EnsureConnectedToPlayer();
-        var stream = new MemoryStream();
-        await JsonSerializer.SerializeAsync(stream, req);
-        _client.SendAsync(stream, (int)stream.Length, null);
+        var json = JsonSerializer.Serialize( req);
+        _client.Send(json);
     }
     void EnsureConnectedToPlayer()
     {

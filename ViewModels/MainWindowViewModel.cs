@@ -112,6 +112,23 @@ public partial class MainWindowViewModel : ViewModelBase
         //setter not working here, so using the event instead
     }
 
+    public async Task SetFumenContent(string content)
+    {
+        if (CurrentSimaiFile is null) return;
+        var text = CurrentSimaiFile.RawCharts[SelectedDifficulty];
+        if (text is null) CurrentSimaiFile.RawCharts[SelectedDifficulty] = "";
+        CurrentSimaiFile.RawCharts[SelectedDifficulty] = content;
+        OnPropertyChanged(nameof(CurrentSimaiFile));
+        try
+        {
+            CurrentSimaiChart = await _simaiParser.ParseChartAsync(null, null, content);
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine(ex);
+        }
+    }
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(FumenContent))]
     [NotifyPropertyChangedFor(nameof(Level))]
@@ -131,7 +148,7 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     float trackZoomLevel = 4f;
     [ObservableProperty]
-    [NotifyPropertyChangedFor("WindowTitle")]
+    [NotifyPropertyChangedFor(nameof(WindowTitle))]
     bool isSaved = true;
     [ObservableProperty]
     TrackInfo? songTrackInfo = null;
@@ -141,7 +158,6 @@ public partial class MainWindowViewModel : ViewModelBase
 
 
     float _offset = 0;
-    string _maidataDir = string.Empty;
     readonly string[] _level = new string[7];
     PlayerConnection _playerConnection = new PlayerConnection();
 
@@ -150,6 +166,7 @@ public partial class MainWindowViewModel : ViewModelBase
     public MainWindowViewModel()
     {
         PropertyChanged += MainWindowViewModel_PropertyChanged;
+        _playerConnection.OnPlayStarted += _playerConnection_OnPlayStarted;
     }
 
     public async Task<bool> ConnectToPlayerAsync()
@@ -175,24 +192,11 @@ public partial class MainWindowViewModel : ViewModelBase
         return true;
     }
 
-    private SimaiParser _simaiParser = new SimaiParser();
     private string _maidataDir = "";
-    private TrackReader _trackReader = new TrackReader();
 
-    public bool IsPointerPressedSimaiVisual { get; set; }
-
-    [ObservableProperty]
-    [NotifyPropertyChangedFor("WindowTitle")]
-    private bool isSaved = true;
     [ObservableProperty]
     private bool isFollowCursor;
-    public string WindowTitle
-    {
-        get
-        {
-            Debug.WriteLine(ex);
-        }
-    }
+
     public void SlideZoomLevel(float delta)
     {
         var level = TrackZoomLevel + delta;
@@ -388,26 +392,37 @@ public partial class MainWindowViewModel : ViewModelBase
     private double playStartTime = 0d;
     public async void PlayPause(TextEditor textEditor)
     {
-        if (_trackReader.isPlaying)
+        if (_playerConnection.ViewSummary.State == MajdataPlay.View.Types.ViewStatus.Playing)
         {
-            _trackReader.Pause();
+            await _playerConnection.PauseAsync();
             return;
         }
-        Stopwatch watch = new Stopwatch();
-        playStartTime = TrackTime;
-        _trackReader.Play(TrackTime);
-        watch.Start();
-        while (_trackReader.isPlaying)
+        if (_playerConnection.ViewSummary.State == MajdataPlay.View.Types.ViewStatus.Paused)
         {
-            TrackTime = watch.ElapsedMilliseconds/1000d + playStartTime;
-            if (IsFollowCursor)
+            await _playerConnection.ResumeAsync();
+            playStartTime = TrackTime;
+            return;
+        }
+
+        playStartTime = TrackTime;
+        await _playerConnection.ParseAndPlayAsync(playStartTime, Offset, CurrentSimaiFile.RawCharts[SelectedDifficulty], 1);
+    }
+
+    private async void _playerConnection_OnPlayStarted(object sender, MajdataPlay.View.Types.MajWsResponseType e)
+    {
+        Stopwatch watch = new Stopwatch();
+        watch.Start();
+        while (_playerConnection.ViewSummary.State == MajdataPlay.View.Types.ViewStatus.Playing)
+        {
+            TrackTime = watch.ElapsedMilliseconds / 1000d + playStartTime;
+            /*if (IsFollowCursor)
             {
                 var nearestNote = CurrentSimaiChart.CommaTimings.MinBy(o => Math.Abs(o.Timing + Offset - TrackTime));
                 if (nearestNote is null) continue;
-                
-                var point =  new Point(nearestNote.RawTextPositionX, nearestNote.RawTextPositionY);
+
+                var point = new Point(nearestNote.RawTextPositionX, nearestNote.RawTextPositionY);
                 SeekToDocPos(point, textEditor);
-            }
+            }*/
             await Task.Delay(16);
         }
     }
@@ -425,5 +440,15 @@ public partial class MainWindowViewModel : ViewModelBase
         editor.Select(offset, 0);
         editor.ScrollTo((int)position.Y + 1, (int)position.X);
         editor.Focus();
+    }
+
+    private void MainWindowViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        //Debug.WriteLine(e.PropertyName);
+        if (e.PropertyName == nameof(CurrentSimaiFile))
+        {
+            Debug.WriteLine("SimaiFileChanged");
+            IsSaved = false;
+        }
     }
 }

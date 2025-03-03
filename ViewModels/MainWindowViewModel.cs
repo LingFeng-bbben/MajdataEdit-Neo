@@ -19,6 +19,7 @@ using MsBox.Avalonia;
 using AvaloniaEdit;
 using MsBox.Avalonia.Enums;
 using MajdataPlay.View.Types;
+using MajdataEdit_Neo.Utils;
 
 namespace MajdataEdit_Neo.ViewModels;
 
@@ -174,20 +175,7 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         if (!await _playerConnection.ConnectAsync())
         {
-            var mainWindow = (Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.MainWindow;
-            var msgBox = MessageBoxManager.GetMessageBoxStandard(
-                    title: "Warning",
-                    text: "Cannot connect to player",
-                    @enum: ButtonEnum.Ok,
-                    icon: Icon.Warning);
-            if (mainWindow is null)
-            {
-                await msgBox.ShowWindowAsync();
-            }
-            else
-            {
-                await msgBox.ShowWindowDialogAsync(mainWindow);
-            }
+            await MessageBox.ShowWindowDialogAsync("Cannot connect to player", "Warning", ButtonEnum.Ok, Icon.Warning);
             return false;
         }
         return true;
@@ -393,26 +381,9 @@ public partial class MainWindowViewModel : ViewModelBase
     private double playStartTime = 0d;
     public async void PlayPause(TextEditor textEditor)
     {
-        if(!_playerConnection.IsConnected)
+        if(!await EnsureConnectedToPlayerAsync())
         {
-            if (!await _playerConnection.ConnectAsync())
-            {
-                var mainWindow = (Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.MainWindow;
-                var msgBox = MessageBoxManager.GetMessageBoxStandard(
-                        title: "Warning",
-                        text: "Cannot connect to player",
-                        @enum: ButtonEnum.Ok,
-                        icon: Icon.Warning);
-                if (mainWindow is null)
-                {
-                    await msgBox.ShowWindowAsync();
-                }
-                else
-                {
-                    await msgBox.ShowWindowDialogAsync(mainWindow);
-                }
-                return;
-            }
+            return;
         }
         switch(_playerConnection.ViewSummary.State)
         {
@@ -429,11 +400,11 @@ public partial class MainWindowViewModel : ViewModelBase
         await _playerConnection.ParseAndPlayAsync(playStartTime, Offset, CurrentSimaiFile.RawCharts[SelectedDifficulty], 1);
     }
 
-    private async void _playerConnection_OnPlayStarted(object sender, MajdataPlay.View.Types.MajWsResponseType e)
+    private async void _playerConnection_OnPlayStarted(object sender, MajWsResponseType e)
     {
         Stopwatch watch = new Stopwatch();
         watch.Start();
-        while (_playerConnection.ViewSummary.State == MajdataPlay.View.Types.ViewStatus.Playing)
+        while (_playerConnection.ViewSummary.State == ViewStatus.Playing)
         {
             TrackTime = watch.ElapsedMilliseconds / 1000d + playStartTime;
             /*if (IsFollowCursor)
@@ -450,12 +421,41 @@ public partial class MainWindowViewModel : ViewModelBase
 
     public async void Stop(bool isBackToStart = true)
     {
+        if (!await EnsureConnectedToPlayerAsync())
+        {
+            _trackReader.Stop();
+            if (isBackToStart)
+                TrackTime = playStartTime;
+            return;
+        }
+        switch (_playerConnection.ViewSummary.State)
+        {
+            case ViewStatus.Ready:
+            case ViewStatus.Playing:
+            case ViewStatus.Paused:
+                break;
+            default:
+                return;
+        }
+        
+        _trackReader.Stop();
+        await _playerConnection.StopAsync();
         if (isBackToStart)
             TrackTime = playStartTime;
-        await _playerConnection.StopAsync();
-
     }
+    async Task<bool> EnsureConnectedToPlayerAsync()
+    {
+        if (!_playerConnection.IsConnected)
+        {
+            if (!await _playerConnection.ConnectAsync())
+            {
+                await MessageBox.ShowWindowDialogAsync("Cannot connect to player", "Warning", ButtonEnum.Ok, Icon.Warning);
 
+                return false;
+            }
+        }
+        return true;
+    }
     public void SeekToDocPos(Point position, TextEditor editor)
     {
         var offset = editor.Document.GetOffset((int)position.Y + 1, (int)position.X);

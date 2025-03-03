@@ -14,12 +14,9 @@ using MajSimai;
 using CommunityToolkit.Mvvm.ComponentModel;
 using AvaloniaEdit.Document;
 using System.Linq;
-using System.Timers;
 using System.Collections.ObjectModel;
 using MsBox.Avalonia;
-using Avalonia.Win32.Interop.Automation;
 using AvaloniaEdit;
-using Avalonia.Data.Converters;
 using MsBox.Avalonia.Enums;
 
 namespace MajdataEdit_Neo.ViewModels;
@@ -146,6 +143,7 @@ public partial class MainWindowViewModel : ViewModelBase
     float _offset = 0;
     string _maidataDir = string.Empty;
     readonly string[] _level = new string[7];
+    PlayerConnection _playerConnection = new PlayerConnection();
 
     SimaiParser _simaiParser = new SimaiParser();
     TrackReader _trackReader = new TrackReader();
@@ -157,7 +155,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
     public async Task<bool> ConnectToPlayerAsync()
     {
-        if (!await PlayerConnection.ConnectAsync())
+        if (!await _playerConnection.ConnectAsync())
         {
             var mainWindow = (Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.MainWindow;
             var msgBox = MessageBoxManager.GetMessageBoxStandard(
@@ -373,7 +371,7 @@ public partial class MainWindowViewModel : ViewModelBase
         //Debug.WriteLine(e.PropertyName);
         if (e.PropertyName == nameof(CurrentSimaiFile))
         {
-            //Debug.WriteLine("SimaiFileChanged");
+            Debug.WriteLine("SimaiFileChanged");
             IsSaved = false;
         }
     }

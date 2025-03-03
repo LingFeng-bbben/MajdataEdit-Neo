@@ -49,5 +49,6 @@
 
   <ItemGroup>
     <Folder Include="Assets\Modules\" />
+    <Folder Include="Models\MajWs\" />
   </ItemGroup>
 </Project>

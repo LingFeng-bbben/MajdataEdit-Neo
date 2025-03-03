@@ -78,7 +78,7 @@ internal class PlayerConnection : IDisposable
             var resp = JsonSerializer.Deserialize<MajWsResponseBase>(args.Data,JSON_READER_OPTIONS);
             switch (resp.responseType) {
                 case MajWsResponseType.Heartbeat:
-                    var status = JsonSerializer.Deserialize<ViewSummary>(resp.responseData.ToString(),JSON_READER_OPTIONS);
+                    var status = JsonSerializer.Deserialize<ViewSummary>(resp.responseData?.ToString() ?? string.Empty, JSON_READER_OPTIONS);
                     _viewSummary = status;
                     break;
                 case MajWsResponseType.PlayResumed:

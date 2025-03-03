@@ -126,11 +126,11 @@
       </StackPanel>
 
 
-      <Button Grid.Row="3" Grid.Column="1" Height="50" Width="50" Margin="5"
+      <Button IsEnabled="{Binding IsPlayControlEnabled}" Grid.Row="3" Grid.Column="1" Height="50" Width="50" Margin="5"
               CommandParameter="true" Command="{Binding Stop}">
         <PathIcon Width="13" Data="{StaticResource stop}"/>
       </Button>
-      <Button Grid.Row="3" Grid.Column="2" Height="50" Width="50" Margin="5"
+      <Button IsEnabled="{Binding IsPlayControlEnabled}" Grid.Row="3" Grid.Column="2" Height="50" Width="50" Margin="5"
               CommandParameter="{Binding #Editor}" Command="{Binding PlayPause}">
         <PathIcon Data="{StaticResource play_pause}"/>
       </Button>

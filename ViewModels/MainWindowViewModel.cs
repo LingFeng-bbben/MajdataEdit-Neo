@@ -20,6 +20,7 @@ using AvaloniaEdit;
 using MsBox.Avalonia.Enums;
 using MajdataPlay.View.Types;
 using MajdataEdit_Neo.Utils;
+using Avalonia.Threading;
 
 namespace MajdataEdit_Neo.ViewModels;
 
@@ -185,7 +186,8 @@ public partial class MainWindowViewModel : ViewModelBase
 
     [ObservableProperty]
     private bool isFollowCursor;
-
+    [ObservableProperty]
+    private bool isPlayControlEnabled= true;
     public void SlideZoomLevel(float delta)
     {
         var level = TrackZoomLevel + delta;
@@ -248,7 +250,6 @@ public partial class MainWindowViewModel : ViewModelBase
             SongTrackInfo = _trackReader.ReadTrack(_maidataDir);
             IsSaved = false;
             OpenChartInfoWindow();
-            //TODO: Trigger View Reload
         }
         catch (Exception e)
         {
@@ -270,23 +271,28 @@ public partial class MainWindowViewModel : ViewModelBase
             SongTrackInfo = _trackReader.ReadTrack(_maidataDir);
             IsSaved = true;
             //TODO: Reset view if already loaded?
-            var useOgg = File.Exists(_maidataDir + "/track.ogg");
-            var trackPath = _maidataDir + "/track" + (useOgg ? ".ogg" : ".mp3");
-
-            var bgPath = _maidataDir + "/bg.jpg";
-            if (!File.Exists(bgPath)) bgPath = _maidataDir + "/bg.png";
-            else if (!File.Exists(bgPath)) bgPath = "";
-
-            var pvPath = _maidataDir + "/pv.mp4";
-            if (!File.Exists(pvPath)) pvPath = _maidataDir + "/bg.mp4";
-            else if (!File.Exists(pvPath)) pvPath = "";
-
-            await _playerConnection.LoadAsync(trackPath, bgPath, pvPath);
+            await EditorLoad();
         }
         catch (Exception e)
         {
             Debug.WriteLine(e.Message);
         }
+    }
+
+    private async Task EditorLoad()
+    {
+        var useOgg = File.Exists(_maidataDir + "/track.ogg");
+        var trackPath = _maidataDir + "/track" + (useOgg ? ".ogg" : ".mp3");
+
+        var bgPath = _maidataDir + "/bg.jpg";
+        if (!File.Exists(bgPath)) bgPath = _maidataDir + "/bg.png";
+        else if (!File.Exists(bgPath)) bgPath = "";
+
+        var pvPath = _maidataDir + "/pv.mp4";
+        if (!File.Exists(pvPath)) pvPath = _maidataDir + "/bg.mp4";
+        else if (!File.Exists(pvPath)) pvPath = "";
+
+        await _playerConnection.LoadAsync(trackPath, bgPath, pvPath);
     }
 
     //return: isCancel
@@ -355,7 +361,7 @@ public partial class MainWindowViewModel : ViewModelBase
         CurrentSimaiFile.Commands = datacontext.SimaiCommands.ToArray();
         await Task.Delay(100);
         OnPropertyChanged(nameof(CurrentSimaiFile));
-        //TODO: Trigger View Reload
+        await EditorLoad();
     }
     public void MirrorHorizontal(TextEditor editor)
     {
@@ -381,51 +387,62 @@ public partial class MainWindowViewModel : ViewModelBase
     private double playStartTime = 0d;
     public async void PlayPause(TextEditor textEditor)
     {
+        IsPlayControlEnabled = false;
         if(!await EnsureConnectedToPlayerAsync())
         {
+            IsPlayControlEnabled = true;
             return;
         }
         switch(_playerConnection.ViewSummary.State)
         {
             case ViewStatus.Playing:
                 await _playerConnection.PauseAsync();
+                IsPlayControlEnabled = true;
                 return;
             case ViewStatus.Paused:
                 await _playerConnection.ResumeAsync();
                 playStartTime = TrackTime;
+                IsPlayControlEnabled = true;
                 return;
         }
 
         playStartTime = TrackTime;
+        _textEditor = textEditor;
         await _playerConnection.ParseAndPlayAsync(playStartTime, Offset, CurrentSimaiFile.RawCharts[SelectedDifficulty], 1);
     }
-
+    TextEditor _textEditor;
     private async void _playerConnection_OnPlayStarted(object sender, MajWsResponseType e)
     {
+        IsPlayControlEnabled = true;
         Stopwatch watch = new Stopwatch();
         watch.Start();
         while (_playerConnection.ViewSummary.State == ViewStatus.Playing)
         {
             TrackTime = watch.ElapsedMilliseconds / 1000d + playStartTime;
-            /*if (IsFollowCursor)
+            if (IsFollowCursor)
             {
                 var nearestNote = CurrentSimaiChart.CommaTimings.MinBy(o => Math.Abs(o.Timing + Offset - TrackTime));
                 if (nearestNote is null) continue;
 
                 var point = new Point(nearestNote.RawTextPositionX, nearestNote.RawTextPositionY);
-                SeekToDocPos(point, textEditor);
-            }*/
+                Dispatcher.UIThread.Invoke(() =>
+                {
+                    SeekToDocPos(point, _textEditor);
+                });
+                
+            }
             await Task.Delay(16);
         }
     }
 
     public async void Stop(bool isBackToStart = true)
     {
+        IsPlayControlEnabled = false;
         if (!await EnsureConnectedToPlayerAsync())
         {
-            _trackReader.Stop();
             if (isBackToStart)
                 TrackTime = playStartTime;
+            IsPlayControlEnabled = true;
             return;
         }
         switch (_playerConnection.ViewSummary.State)
@@ -435,13 +452,13 @@ public partial class MainWindowViewModel : ViewModelBase
             case ViewStatus.Paused:
                 break;
             default:
+                IsPlayControlEnabled = true;
                 return;
         }
-        
-        _trackReader.Stop();
         await _playerConnection.StopAsync();
         if (isBackToStart)
             TrackTime = playStartTime;
+        IsPlayControlEnabled = true;
     }
     async Task<bool> EnsureConnectedToPlayerAsync()
     {
@@ -471,6 +488,7 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             Debug.WriteLine("SimaiFileChanged");
             IsSaved = false;
+            Stop();
         }
     }
 }

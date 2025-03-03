@@ -14,6 +14,7 @@ using MajdataPlay.View.Types;
 using ErrorEventArgs = WebSocketSharp.ErrorEventArgs;
 using System.Diagnostics;
 using MajdataEdit_Neo.Utils;
+using Avalonia.Threading;
 
 namespace MajdataEdit_Neo.Models;
 internal class PlayerConnection : IDisposable
@@ -74,7 +75,7 @@ internal class PlayerConnection : IDisposable
     }
     async void OnMessage(object? sender, MessageEventArgs args)
     {
-        await Task.Run(() =>
+        await Task.Run(async () =>
         {
             var resp = JsonSerializer.Deserialize<MajWsResponseBase>(args.Data,JSON_READER_OPTIONS);
             switch (resp.responseType) {
@@ -89,6 +90,11 @@ internal class PlayerConnection : IDisposable
                         State = ViewStatus.Playing,//hack
                     };
                     OnPlayStarted?.Invoke(this, resp.responseType);
+                    break;
+                case MajWsResponseType.Error:
+                    await Dispatcher.UIThread.Invoke(async () => {
+                        await MessageBox.ShowAsync(resp.responseData.ToString(), "Error", icon: MsBox.Avalonia.Enums.Icon.Error);
+                    });
                     break;
                 default:
                     Debug.WriteLine(args.Data);
@@ -167,7 +173,7 @@ internal class PlayerConnection : IDisposable
     }
     public async Task ParseAndPlayAsync(double startAt, double offset, string fumen,float speed=1)
     {
-        if (ViewSummary.State != ViewStatus.Loaded) throw new InvalidOperationException();
+        if (ViewSummary.State != ViewStatus.Loaded && ViewSummary.State != ViewStatus.Error) throw new InvalidOperationException();
         var req = new MajWsRequestBase()
         {
             requestType = MajWsRequestType.Play,

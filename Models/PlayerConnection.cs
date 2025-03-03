@@ -185,7 +185,7 @@ internal class PlayerConnection : IDisposable
     async Task SendAsync(MajWsRequestBase req)
     {
         EnsureConnectedToPlayer();
-        var json = JsonSerializer.Serialize( req);
+        var json = JsonSerializer.Serialize(req, JSON_READER_OPTIONS);
         _client.Send(json);
     }
     void EnsureConnectedToPlayer()

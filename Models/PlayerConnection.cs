@@ -73,10 +73,24 @@ internal class PlayerConnection : IDisposable
     {
         await Task.Run(() =>
         {
-            var resp = JsonSerializer.Deserialize<MajWsResponseBase>(args.Data);
-            switch (resp.responseType) {
+            var json = string.Empty;
+            if (args.IsText)
+            {
+                json = args.Data;
+            }
+            else if(args.IsBinary)
+            {
+                json = Encoding.UTF8.GetString(args.RawData);
+            }
+            else
+            {
+                return;
+            }
+            var resp = JsonSerializer.Deserialize<MajWsResponseBase>(json, JSON_READER_OPTIONS);
+            switch (resp.responseType) 
+            {
                 case MajWsResponseType.Heartbeat:
-                    var status = JsonSerializer.Deserialize<ViewSummary>(resp.responseData.ToString());
+                    var status = JsonSerializer.Deserialize<ViewSummary>(resp.responseData?.ToString() ?? string.Empty, JSON_READER_OPTIONS);
                     _viewSummary = status;
                     break;
                 default:
@@ -180,7 +194,8 @@ internal class PlayerConnection : IDisposable
     {
         EnsureConnectedToPlayer();
         var stream = new MemoryStream();
-        await JsonSerializer.SerializeAsync(stream, req);
+        await JsonSerializer.SerializeAsync(stream, req, JSON_READER_OPTIONS);
+        stream.Position = 0;
         _client.SendAsync(stream, (int)stream.Length, null);
     }
     void EnsureConnectedToPlayer()

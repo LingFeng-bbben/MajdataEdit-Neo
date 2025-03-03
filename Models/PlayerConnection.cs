@@ -6,8 +6,11 @@ using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
+using WebSocketSharp;
+using ErrorEventArgs = WebSocketSharp.ErrorEventArgs;
 
 namespace MajdataEdit_Neo.Models;
 internal static class PlayerConnection
@@ -36,7 +39,7 @@ internal static class PlayerConnection
         }
     }
     public static bool IsConnected { get; private set; } = false;
-    public static Uri PlayerAddress 
+    public static string PlayerAddress 
     {
         get => field;
         set
@@ -44,155 +47,158 @@ internal static class PlayerConnection
             if (IsConnected)
                 throw new InvalidOperationException();
             field = value;
-            _stateApiUri = new Uri(value, "/api/state");
-            _loadApiUri = new Uri(value, "/api/load");
-            _maidataApiUri = new Uri(value, "/api/maidata");
-            _timestampApiUri = new Uri(value, "/api/timestamp");
-            _playApiUri = new Uri(value, "/api/play");
-            _pauseApiUri = new Uri(value, "/api/pause");
-            _stopApiUri = new Uri(value, "/api/stop");
-            _resetApiUri = new Uri(value, "/api/reset");
+            _client = new(value);
+            _client.OnClose += OnClose;
+            _client.OnOpen += OnOpen;
+            _client.OnMessage += OnMessage;
+            _client.OnError += OnError;
         } 
-    } = new Uri("http://localhost:8013/");
+    } = "ws://localhost:8083/";
 
-    static Uri _stateApiUri = new Uri(PlayerAddress, "/api/state");
-    static Uri _loadApiUri = new Uri(PlayerAddress, "/api/load");
-    static Uri _maidataApiUri = new Uri(PlayerAddress, "/api/maidata");
-    static Uri _timestampApiUri = new Uri(PlayerAddress, "/api/timestamp");
-    static Uri _playApiUri = new Uri(PlayerAddress, "/api/play");
-    static Uri _resumeApiUri = new Uri(PlayerAddress, "/api/resume");
-    static Uri _pauseApiUri = new Uri(PlayerAddress, "/api/pause");
-    static Uri _stopApiUri = new Uri(PlayerAddress, "/api/stop");
-    static Uri _resetApiUri = new Uri(PlayerAddress, "/api/reset");
 
     static ViewSummary _playerSummary;
-    static Task _keepAliveTask = Task.CompletedTask;
-    readonly static HttpClient _client = new HttpClient(new HttpClientHandler()
+    static WebSocket _client = new("ws://127.0.0.1:8083");
+    readonly static JsonSerializerOptions JSON_READER_OPTIONS = new()
     {
-        Proxy = null,
-        UseProxy = false,
-    });
-    static CancellationTokenSource _cts = new();
+        Converters =
+        {
+            new JsonStringEnumConverter()
+        },
+    };
+
+    static PlayerConnection()
+    {
+        _client.OnClose += OnClose;
+        _client.OnOpen += OnOpen;
+        _client.OnMessage += OnMessage;
+        _client.OnError += OnError;
+    }
+    static void OnOpen(object? sender, EventArgs args)
+    {
+        IsConnected = true;
+    }
+    static void OnClose(object? sender, CloseEventArgs args)
+    {
+        IsConnected = false;
+    }
+    static void OnMessage(object? sender, MessageEventArgs args)
+    {
+
+    }
+    static void OnError(object? sender, ErrorEventArgs args)
+    {
+
+    }
     public static async Task<bool> ConnectAsync()
     {
-        if (!_keepAliveTask.IsCompleted)
+        if (IsConnected)
             return true;
-        _cts = new();
-        _keepAliveTask = ConnectToPlayer();
-        return await Task.Run(async () =>
-        {
-            using var cts = new CancellationTokenSource();
-            var token = cts.Token;
-            cts.CancelAfter(2000);
-            try
-            {
-                while (!IsConnected)
-                {
-                    token.ThrowIfCancellationRequested();
-                    await Task.Yield();
-                }
-                return true;
-            }
-            catch
-            {
-                return false;
-            }
-        });
+        using var cts = new CancellationTokenSource();
+        cts.CancelAfter(2000);
+
+        return await ConnectToPlayer(cts.Token);
     }
     public static void Disconnect()
     {
-        _cts.Cancel();
+        _client.Close();
     }
     public static async Task LoadAsync(byte[] track,
                                        byte[] cover,
                                        byte[] mv)
     {
-        EnsureConnectedToPlayer();
-        
-        var req = new HttpRequestMessage(HttpMethod.Post, _loadApiUri)
+        var req = new MajWsRequestBase()
         {
-            Content = new MultipartFormDataContent()
+            requestType = MajWsRequestType.Load,
+            requestData = new MajWsRequestLoadBinary()
             {
-                { new ByteArrayContent(track),"track" },
-                { new ByteArrayContent(cover),"bg" },
-                { new ByteArrayContent(mv),"bga" },
+                Image = cover,
+                Track = track,
+                Video = mv
             }
         };
-        var rsp = await _client.SendAsync(req);
-        rsp.EnsureSuccessStatusCode();
+        await SendAsync(req);
+    }
+    public static async Task LoadAsync(string trackPath,
+                                       string coverPath,
+                                       string mvPath)
+    {
+        var req = new MajWsRequestBase()
+        {
+            requestType = MajWsRequestType.Load,
+            requestData = new MajWsRequestLoad()
+            {
+                ImagePath = coverPath,
+                TrackPath = trackPath,
+                VideoPath = mvPath
+            }
+        };
+        await SendAsync(req);
     }
     public static async Task ResetAsync()
     {
-        EnsureConnectedToPlayer();
-        var rsp = await _client.GetAsync(_resetApiUri);
-        rsp.EnsureSuccessStatusCode();
+        var req = new MajWsRequestBase()
+        {
+            requestType = MajWsRequestType.Reset,
+            requestData = null
+        };
+        await SendAsync(req);
     }
-    public static async Task ParseMaidataAsync(string maidataContent)
-    {
-        EnsureConnectedToPlayer();
-        var rsp = await _client.PostAsync(_maidataApiUri, new StringContent(maidataContent));
-        rsp.EnsureSuccessStatusCode();
-    }
+    //public static async Task ParseMaidataAsync(string maidataContent,double startAt)
+    //{
+    //    EnsureConnectedToPlayer();
+    //    var rsp = await _client.PostAsync(_maidataApiUri, new StringContent(maidataContent));
+    //    rsp.EnsureSuccessStatusCode();
+    //}
     public static async Task PauseAsync()
     {
-        EnsureConnectedToPlayer();
-        var rsp = await _client.GetAsync(_pauseApiUri);
-        rsp.EnsureSuccessStatusCode();
+        var req = new MajWsRequestBase()
+        {
+            requestType = MajWsRequestType.Pause,
+            requestData = null
+        };
+        await SendAsync(req);
     }
     public static async Task StopAsync()
     {
-        EnsureConnectedToPlayer();
-        var rsp = await _client.GetAsync(_stopApiUri);
-        rsp.EnsureSuccessStatusCode();
+        var req = new MajWsRequestBase()
+        {
+            requestType = MajWsRequestType.Stop,
+            requestData = null
+        };
+        await SendAsync(req);
     }
     public static async Task PlayAsync(PlayRequest req)
     {
-        using var memoryStream = new MemoryStream();
-        await JsonSerializer.SerializeAsync(memoryStream,req);
-        var rsp = await _client.PostAsync(_playApiUri, new StreamContent(memoryStream));
-        rsp.EnsureSuccessStatusCode();
+        //using var memoryStream = new MemoryStream();
+        //await JsonSerializer.SerializeAsync(memoryStream,req);
+        //var rsp = await _client.PostAsync(_playApiUri, new StreamContent(memoryStream));
+        //rsp.EnsureSuccessStatusCode();
     }
     public static async Task ResumeAsync()
     {
-        var rsp = await _client.GetAsync(_resumeApiUri);
-        rsp.EnsureSuccessStatusCode();
+        var req = new MajWsRequestBase()
+        {
+            requestType = MajWsRequestType.Resume,
+            requestData = null
+        };
+        await SendAsync(req);
     }
-    static async Task ConnectToPlayer()
+    static async Task<bool> ConnectToPlayer(CancellationToken token = default)
     {
-        
-        var token = _cts.Token;
         try
         {
-            while (true)
+            _client.ConnectAsync();
+            while(!_client.IsAlive)
             {
+                await Task.Yield();
                 token.ThrowIfCancellationRequested();
-                try
-                {
-                    using var cts = new CancellationTokenSource();
-                    using var helloPacket = new HttpRequestMessage(HttpMethod.Get, _stateApiUri)
-                    {
-                        Content = new StringContent("Hello!!!")
-                    };
-                    cts.CancelAfter(2000);
-                    var rsp = await _client.SendAsync(helloPacket, cts.Token);
-                    rsp.EnsureSuccessStatusCode();
-                    var contentStream = await rsp.Content.ReadAsStreamAsync();
-                    _playerSummary = await JsonSerializer.DeserializeAsync<ViewSummary>(contentStream);
-                    IsConnected = true;
-                }
-                catch
-                {
-                    IsConnected = false;
-                }
-                finally
-                {
-                    await Task.Delay(1000);
-                }
             }
+            return true;
         }
-        finally
+        catch
         {
-            IsConnected = false;
+            _client.Close();
+            return false;
         }
     }
     static void EnsureConnectedToPlayer()
@@ -201,11 +207,54 @@ internal static class PlayerConnection
             return;
         throw new PlayerNotConnectedException();
     }
-    struct ViewSummary
+    static async Task SendAsync(MajWsRequestBase req)
+    {
+        EnsureConnectedToPlayer();
+        var stream = new MemoryStream();
+        await JsonSerializer.SerializeAsync(stream, req);
+        _client.SendAsync(stream, (int)stream.Length, null);
+    }
+    readonly struct ViewSummary
     {
         public PlayerStatus State { get; init; }
         public string ErrMsg { get; init; }
         public float Timeline { get; init; }
+    }
+    readonly struct MajWsRequestBase
+    {
+        public MajWsRequestType requestType { get; init; }
+        public object? requestData { get; init; }
+    }
+    readonly struct MajWsRequestLoad
+    {
+        /*public string TrackB64 { get; set; }
+        public string ImageB64 { get; set; }
+        public string VideoB64 { get; set; }*/
+        public string TrackPath { get; init; }
+        public string ImagePath { get; init; }
+        public string VideoPath { get; init; }
+    }
+    readonly struct MajWsRequestLoadBinary
+    {
+        public byte[] Track { get; init; }
+        public byte[] Image { get; init; }
+        public byte[] Video { get; init; }
+    }
+    readonly struct MajWsRequestPlay
+    {
+        public double StartAt { get; init; }
+        public string SimaiFumen { get; init; }
+        public double Offset { get; init; }
+    }
+    enum MajWsRequestType
+    {
+        Reset,
+        Load,
+        Play,
+        Pause,
+        Resume,
+        Stop,
+        State
     }
 }
 internal enum PlaybackMode

@@ -18,6 +18,8 @@ namespace MajdataEdit_Neo.Models;
 internal class PlayerConnection : IDisposable
 {
     public bool IsConnected => _client.IsAlive;
+    public ViewSummary ViewSummary => _viewSummary;
+    private ViewSummary _viewSummary;
 
     WebSocket _client = new("ws://127.0.0.1:8083/majdata");
     readonly static JsonSerializerOptions JSON_READER_OPTIONS = new()
@@ -32,7 +34,7 @@ internal class PlayerConnection : IDisposable
         if (IsConnected)
             return true;
         using var cts = new CancellationTokenSource();
-        cts.CancelAfter(2000);
+        //cts.CancelAfter(5000);
 
         return await ConnectToPlayer(url, cts.Token);
     }
@@ -45,7 +47,7 @@ internal class PlayerConnection : IDisposable
             _client.OnOpen += OnOpen;
             _client.OnMessage += OnMessage;
             _client.OnError += OnError;
-            _client.ConnectAsync();
+            _client.Connect();
             while (!_client.IsAlive)
             {
                 await Task.Yield();
@@ -67,9 +69,22 @@ internal class PlayerConnection : IDisposable
     {
 
     }
-    void OnMessage(object? sender, MessageEventArgs args)
+    async void OnMessage(object? sender, MessageEventArgs args)
     {
-        Debug.WriteLine(args.Data);
+        await Task.Run(() =>
+        {
+            var resp = JsonSerializer.Deserialize<MajWsResponseBase>(args.Data);
+            switch (resp.responseType) {
+                case MajWsResponseType.Heartbeat:
+                    var status = JsonSerializer.Deserialize<ViewSummary>(resp.responseData.ToString());
+                    _viewSummary = status;
+                    break;
+                default:
+                    Debug.WriteLine(args.Data);
+                    break;
+            }
+        });
+        
     }
     void OnError(object? sender, ErrorEventArgs args)
     {
@@ -95,6 +110,7 @@ internal class PlayerConnection : IDisposable
                                        string coverPath,
                                        string mvPath)
     {
+        if (ViewSummary.State != ViewStatus.Idle) throw new InvalidOperationException();
         var req = new MajWsRequestBase()
         {
             requestType = MajWsRequestType.Load,
@@ -134,16 +150,18 @@ internal class PlayerConnection : IDisposable
         };
         await SendAsync(req);
     }
-    public async Task PlayAsync(double startAt, double offset, string fumen)
+    public async Task ParseAndPlayAsync(double startAt, double offset, string fumen,float speed=1)
     {
+        if (ViewSummary.State != ViewStatus.Loaded) throw new InvalidOperationException();
         var req = new MajWsRequestBase()
         {
-            requestType = MajWsRequestType.Stop,
+            requestType = MajWsRequestType.Play,
             requestData = new MajWsRequestPlay()
             {
                 Offset = offset,
                 SimaiFumen = fumen,
                 StartAt = startAt,
+                Speed = speed
             }
         };
         await SendAsync(req);

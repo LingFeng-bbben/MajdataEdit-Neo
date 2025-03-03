@@ -150,7 +150,6 @@ public partial class MainWindowViewModel : ViewModelBase
     public MainWindowViewModel()
     {
         PropertyChanged += MainWindowViewModel_PropertyChanged;
-        ConnectToPlayerAsync();
     }
 
     public async Task<bool> ConnectToPlayerAsync()
@@ -268,8 +267,19 @@ public partial class MainWindowViewModel : ViewModelBase
             _maidataDir = fileInfo.Directory.FullName;
             SongTrackInfo = _trackReader.ReadTrack(_maidataDir);
             IsSaved = true;
-            
-            //TODO: Trigger View Reload
+            //TODO: Reset view if already loaded?
+            var useOgg = File.Exists(_maidataDir + "/track.ogg");
+            var trackPath = _maidataDir + "/track" + (useOgg ? ".ogg" : ".mp3");
+
+            var bgPath = _maidataDir + "/bg.jpg";
+            if (!File.Exists(bgPath)) bgPath = _maidataDir + "/bg.png";
+            else if (!File.Exists(bgPath)) bgPath = "";
+
+            var pvPath = _maidataDir + "/pv.mp4";
+            if (!File.Exists(pvPath)) pvPath = _maidataDir + "/bg.mp4";
+            else if (!File.Exists(pvPath)) pvPath = "";
+
+            await _playerConnection.LoadAsync(trackPath, bgPath, pvPath);
         }
         catch (Exception e)
         {

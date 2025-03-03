@@ -48,6 +48,12 @@ public partial class MainWindow : Window
         this.KeyUp += MainWindow_KeyUp;
         this.LostFocus += MainWindow_LostFocus;
         this.Closing += MainWindow_Closing;
+        this.Loaded += MainWindow_Loaded;
+    }
+
+    private async void MainWindow_Loaded(object? sender, RoutedEventArgs e)
+    {
+        await viewModel.ConnectToPlayerAsync();
     }
 
     bool haveAsked = false;

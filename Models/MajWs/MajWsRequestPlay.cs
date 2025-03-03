@@ -5,5 +5,6 @@ namespace MajdataPlay.View.Types
         public double StartAt { get; init; }
         public string SimaiFumen { get; init; }
         public double Offset { get; init; }
+        public float Speed { get; init; }
     }
 }

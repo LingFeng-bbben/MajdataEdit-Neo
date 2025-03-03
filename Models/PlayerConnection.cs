@@ -13,6 +13,7 @@ using WebSocketSharp;
 using MajdataPlay.View.Types;
 using ErrorEventArgs = WebSocketSharp.ErrorEventArgs;
 using System.Diagnostics;
+using MajdataEdit_Neo.Utils;
 
 namespace MajdataEdit_Neo.Models;
 internal class PlayerConnection : IDisposable
@@ -120,7 +121,7 @@ internal class PlayerConnection : IDisposable
                                        string coverPath,
                                        string mvPath)
     {
-        if (ViewSummary.State != ViewStatus.Idle) throw new InvalidOperationException();
+        if (ViewSummary.State != ViewStatus.Idle && ViewSummary.State != ViewStatus.Loaded) throw new InvalidOperationException();
         var req = new MajWsRequestBase()
         {
             requestType = MajWsRequestType.Load,

@@ -427,11 +427,12 @@ public partial class MainWindowViewModel : ViewModelBase
         }
     }
 
-    public void Stop(bool isBackToStart = true)
+    public async void Stop(bool isBackToStart = true)
     {
-        _trackReader.Stop();
-        if(isBackToStart)
+        if (isBackToStart)
             TrackTime = playStartTime;
+        await _playerConnection.StopAsync();
+
     }
 
     public void SeekToDocPos(Point position, TextEditor editor)

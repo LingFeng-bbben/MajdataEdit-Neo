@@ -83,6 +83,10 @@ internal class PlayerConnection : IDisposable
                     break;
                 case MajWsResponseType.PlayResumed:
                 case MajWsResponseType.PlayStarted:
+                    _viewSummary = new ViewSummary()
+                    {
+                        State = ViewStatus.Playing,//hack
+                    };
                     OnPlayStarted?.Invoke(this, resp.responseType);
                     break;
                 default:
@@ -149,6 +153,10 @@ internal class PlayerConnection : IDisposable
     }
     public async Task StopAsync()
     {
+        _viewSummary = new ViewSummary()
+        {
+            State = ViewStatus.Loaded,//hack
+        };
         var req = new MajWsRequestBase()
         {
             requestType = MajWsRequestType.Stop,

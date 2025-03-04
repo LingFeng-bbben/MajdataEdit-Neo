@@ -21,6 +21,8 @@ using MsBox.Avalonia.Enums;
 using MajdataPlay.View.Types;
 using MajdataEdit_Neo.Utils;
 using Avalonia.Threading;
+using MajdataEdit_Neo.Modules.AutoSave;
+using MajdataEdit_Neo.Modules.AutoSave.Contexts;
 
 namespace MajdataEdit_Neo.ViewModels;
 
@@ -65,6 +67,14 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             if (CurrentSimaiFile is null) return "MajdataEdit Neo";
             return "MajdataEdit Neo - " + CurrentSimaiFile.Title + (IsSaved ? "" : "*");
+        }
+    }
+    public bool IsFumenContextChanged
+    {
+        get
+        {
+            _autoSaveManager.IsFileChanged = !IsSaved;
+            return _autoSaveManager.IsFileChanged;
         }
     }
     public string Level
@@ -125,6 +135,7 @@ public partial class MainWindowViewModel : ViewModelBase
         try
         {
             CurrentSimaiChart = await _simaiParser.ParseChartAsync(null, null, content);
+            IsSaved = true;
         }
         catch (Exception ex)
         {
@@ -151,6 +162,7 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     float trackZoomLevel = 4f;
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsFumenContextChanged))]
     [NotifyPropertyChangedFor(nameof(WindowTitle))]
     bool isSaved = true;
     [ObservableProperty]
@@ -158,18 +170,33 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(DisplayTime))]
     double trackTime = 0f;
+    [ObservableProperty]
+    private bool isFollowCursor;
+    [ObservableProperty]
+    private bool isPlayControlEnabled = true;
 
-
+    string _maidataDir = "";
     float _offset = 0;
     readonly string[] _level = new string[7];
-    PlayerConnection _playerConnection = new PlayerConnection();
+    readonly Lock _syncLock = new();
+    bool _isUpdatingAutoSaveContext = false;
+    DateTime _lastUpdateAutoSaveContextTime = DateTime.UnixEpoch;
 
+    PlayerConnection _playerConnection = new PlayerConnection();
     SimaiParser _simaiParser = new SimaiParser();
     TrackReader _trackReader = new TrackReader();
+    InternalAutoSaveContext _internalAutoSaveContext = new();
+    AutoSaveManager _autoSaveManager;
+    IAutoSaveRecoverer _autoSaveRecoverer;
+
+    const int AUTOSAVE_CONTEXT_UPDATE_INTERVAL_MS = 5000;
     public MainWindowViewModel()
     {
         PropertyChanged += MainWindowViewModel_PropertyChanged;
         _playerConnection.OnPlayStarted += _playerConnection_OnPlayStarted;
+        AutoSaveManager.Initialize(_internalAutoSaveContext,(IAutoSaveContentProvider<string>)_internalAutoSaveContext);
+        _autoSaveManager = AutoSaveManager.Instance;
+        _autoSaveRecoverer = _autoSaveManager.Recoverer;
     }
 
     public async Task<bool> ConnectToPlayerAsync()
@@ -181,13 +208,6 @@ public partial class MainWindowViewModel : ViewModelBase
         }
         return true;
     }
-
-    private string _maidataDir = "";
-
-    [ObservableProperty]
-    private bool isFollowCursor;
-    [ObservableProperty]
-    private bool isPlayControlEnabled= true;
     public void SlideZoomLevel(float delta)
     {
         var level = TrackZoomLevel + delta;
@@ -270,6 +290,9 @@ public partial class MainWindowViewModel : ViewModelBase
             _maidataDir = fileInfo.Directory.FullName;
             SongTrackInfo = _trackReader.ReadTrack(_maidataDir);
             IsSaved = true;
+            _autoSaveManager.Enabled = true;
+            _internalAutoSaveContext.WorkingPath = _maidataDir;
+            _internalAutoSaveContext.Content = await File.ReadAllTextAsync(maidataPath);
             //TODO: Reset view if already loaded?
             await EditorLoad();
         }
@@ -489,6 +512,40 @@ public partial class MainWindowViewModel : ViewModelBase
             Debug.WriteLine("SimaiFileChanged");
             IsSaved = false;
             Stop();
+            
+            lock(_syncLock)
+            {
+                if ((DateTime.Now - _lastUpdateAutoSaveContextTime).TotalMilliseconds < AUTOSAVE_CONTEXT_UPDATE_INTERVAL_MS)
+                    return;
+                else if (_isUpdatingAutoSaveContext)
+                    return;
+                _isUpdatingAutoSaveContext = true;
+                _lastUpdateAutoSaveContextTime = DateTime.Now;
+            }
+            Task.Run(async () =>
+            {
+                try
+                {
+                    if (CurrentSimaiFile is null)
+                        return;
+                    var maidata = await SimaiParser.Shared.DeParseAsStringAsync(CurrentSimaiFile);
+                    _internalAutoSaveContext.Content = maidata;
+                }
+                catch(Exception e)
+                {
+                    Debug.WriteLine(e);
+                }
+                finally
+                {
+                    _isUpdatingAutoSaveContext = false;
+                }
+            });
         }
     }
+    class InternalAutoSaveContext : IAutoSaveContext, IAutoSaveContentProvider<string>
+    {
+        public string WorkingPath { get; set; } = Path.Combine(Environment.CurrentDirectory, ".autosave");
+        public string Content { get; set; } = string.Empty;
+    }
+
 }

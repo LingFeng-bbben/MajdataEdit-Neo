@@ -3,7 +3,7 @@
   See LICENSE in the project root for license information.
 */
 
-namespace MajdataEdit_Neo.Modules.AutoSave;
+namespace MajdataEdit_Neo.Modules.AutoSave.Saver;
 /// <summary>
 ///     自动保存行为接口
 ///     职责仅为进行自动保存行为

@@ -3,46 +3,52 @@
   See LICENSE in the project root for license information.
 */
 
+using MajdataEdit_Neo.Modules.AutoSave.Contexts;
 using System.Collections.Generic;
 using System.IO;
 
 namespace MajdataEdit_Neo.Modules.AutoSave;
 internal class AutoSaveRecoverer : IAutoSaveRecoverer
 {
-    private readonly IAutoSaveContext globalContext = new GlobalAutoSaveContext();
-    private readonly IAutoSaveIndexManager globalIndex;
-    private readonly IAutoSaveContext localContext = new LocalAutoSaveContext();
-    private readonly IAutoSaveIndexManager localIndex;
+    readonly IAutoSaveContext _globalContext;
+    readonly IAutoSaveIndexManager _globalIndex;
+    readonly IAutoSaveContext _localContext;
+    readonly IAutoSaveIndexManager _localIndex;
 
+    readonly AutoSaveManager _manager;
+
+    readonly static IReadOnlyCollection<AutoSaveFileInfo> EMPTY_COLLECTION = new List<AutoSaveFileInfo>(0);
     public AutoSaveRecoverer()
     {
-        localIndex = new AutoSaveIndexManager(AutoSaveManager.LOCAL_AUTOSAVE_MAX_COUNT);
+        _manager = AutoSaveManager.Instance;
+        _localContext = _manager.LocalContext;
+        _globalContext = _manager.GlobalContext;
+        _localIndex = new AutoSaveIndexManager(AutoSaveManager.LOCAL_AUTOSAVE_MAX_COUNT);
         try
         {
-            localIndex.ChangePath(localContext.GetSavePath());
+            _localIndex.ChangePath(_localContext.WorkingPath);
         }
         catch (LocalDirNotOpenYetException)
         {
         }
 
-        globalIndex = new AutoSaveIndexManager(AutoSaveManager.GLOBAL_AUTOSAVE_MAX_COUNT);
-        globalIndex.ChangePath(globalContext.GetSavePath());
+        _globalIndex = new AutoSaveIndexManager(AutoSaveManager.GLOBAL_AUTOSAVE_MAX_COUNT);
+        _globalIndex.ChangePath(_globalContext.WorkingPath);
     }
 
-    public List<AutoSaveFileInfo> GetLocalAutoSaves()
+    public IReadOnlyCollection<AutoSaveFileInfo> GetLocalAutoSaves()
     {
-        var result = new List<AutoSaveFileInfo>();
-
         try
         {
-            localIndex.ChangePath(localContext.GetSavePath());
+            _localIndex.ChangePath(_localContext.WorkingPath);
         }
         catch (LocalDirNotOpenYetException)
         {
-            return result;
+            return EMPTY_COLLECTION;
         }
+        var result = new List<AutoSaveFileInfo>();
 
-        result.AddRange(localIndex.GetFileInfos());
+        result.AddRange(_localIndex.GetFileInfos());
         result.Sort(delegate(AutoSaveFileInfo f1, AutoSaveFileInfo f2)
         {
             return f2.SavedTime.CompareTo(f1.SavedTime);
@@ -51,10 +57,10 @@ internal class AutoSaveRecoverer : IAutoSaveRecoverer
         return result;
     }
 
-    public List<AutoSaveFileInfo> GetGlobalAutoSaves()
+    public IReadOnlyCollection<AutoSaveFileInfo> GetGlobalAutoSaves()
     {
         var result = new List<AutoSaveFileInfo>();
-        result.AddRange(globalIndex.GetFileInfos());
+        result.AddRange(_globalIndex.GetFileInfos());
         result.Sort(delegate(AutoSaveFileInfo f1, AutoSaveFileInfo f2)
         {
             return f2.SavedTime.CompareTo(f1.SavedTime);
@@ -63,7 +69,7 @@ internal class AutoSaveRecoverer : IAutoSaveRecoverer
         return result;
     }
 
-    public List<AutoSaveFileInfo> GetAllAutoSaves()
+    public IReadOnlyCollection<AutoSaveFileInfo> GetAllAutoSaves()
     {
         var result = new List<AutoSaveFileInfo>();
 
@@ -72,12 +78,6 @@ internal class AutoSaveRecoverer : IAutoSaveRecoverer
 
         return result;
     }
-
-    public FumenInfos GetFumenInfos(string path)
-    {
-        return FumenInfos.FromFile(path);
-    }
-
     public bool RecoverFile(AutoSaveFileInfo recoveredFileInfo)
     {
         // 原始的maidata路径

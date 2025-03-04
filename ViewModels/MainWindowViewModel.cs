@@ -187,7 +187,7 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     private bool isFollowCursor;
     [ObservableProperty]
-    private bool isPlayControlEnabled= true;
+    private bool isPlayControlEnabled = false;
     public void SlideZoomLevel(float delta)
     {
         var level = TrackZoomLevel + delta;
@@ -210,14 +210,14 @@ public partial class MainWindowViewModel : ViewModelBase
         Stop(false);
         TrackTime = time;
         if (CurrentSimaiChart is null) return new Point();
-        var nearestNote = CurrentSimaiChart.CommaTimings.MinBy(o => Math.Abs(o.Timing + Offset - time));
+        var nearestNote = CurrentSimaiChart.CommaTimings.Where(o=> o.Timing + Offset - time < 0).MinBy(o => Math.Abs(o.Timing + Offset - time));
         if (nearestNote is null) return new Point();
         return new Point(nearestNote.RawTextPositionX, nearestNote.RawTextPositionY);
     }
     public void SetCaretTime(Point rawPostion, bool setTrackTime)
     {
         if (CurrentSimaiChart is null) return;
-        var nearestNote = CurrentSimaiChart.CommaTimings.Where(o => o.RawTextPositionY == rawPostion.Y-1).MinBy(o => Math.Abs(o.RawTextPositionX - rawPostion.X));
+        var nearestNote = CurrentSimaiChart.CommaTimings.MinBy(o => Math.Abs(o.RawTextPositionX - rawPostion.X) + 9999*Math.Abs(o.RawTextPositionY - rawPostion.Y+1));
         if (nearestNote is null) return;
         CaretTime = nearestNote.Timing;
         if (setTrackTime) {
@@ -293,6 +293,7 @@ public partial class MainWindowViewModel : ViewModelBase
         else if (!File.Exists(pvPath)) pvPath = "";
 
         await _playerConnection.LoadAsync(trackPath, bgPath, pvPath);
+        IsPlayControlEnabled = true;
     }
 
     //return: isCancel

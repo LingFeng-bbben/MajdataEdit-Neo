@@ -541,6 +541,11 @@ public partial class MainWindowViewModel : ViewModelBase
             }
             switch (_playerConnection.ViewSummary.State)
             {
+                case ViewStatus.Loaded:
+                    if (isBackToStart)
+                        break;
+                    else
+                        return;
                 case ViewStatus.Ready:
                 case ViewStatus.Playing:
                 case ViewStatus.Paused:

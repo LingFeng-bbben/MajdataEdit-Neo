@@ -14,6 +14,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <AvaloniaXaml Remove="Modules\**" />
+    <Compile Remove="Modules\**" />
+    <EmbeddedResource Remove="Modules\**" />
+    <None Remove="Modules\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Avalonia" Version="11.2.4" />
     <PackageReference Include="Avalonia.Desktop" Version="11.2.4" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="11.2.4" />
@@ -50,5 +57,9 @@
   <ItemGroup>
     <Folder Include="Assets\Modules\" />
     <Folder Include="Models\MajWs\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="Modules\AutoSave\AutoSaveModule.csproj" />
   </ItemGroup>
 </Project>

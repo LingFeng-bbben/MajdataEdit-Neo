@@ -1,9 +1,11 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
-VisualStudioVersion = 17.13.35806.99 d17.13
+VisualStudioVersion = 17.13.35806.99
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MajdataEdit-Neo", "MajdataEdit-Neo.csproj", "{29E4D0A9-F5BB-0DFD-A70F-010A7C2D717D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AutoSaveModule", "Modules\AutoSave\AutoSaveModule.csproj", "{4DDFE305-46D3-44D6-B9FD-B3D0547DABBD}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,6 +17,10 @@ Global
 		{29E4D0A9-F5BB-0DFD-A70F-010A7C2D717D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{29E4D0A9-F5BB-0DFD-A70F-010A7C2D717D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{29E4D0A9-F5BB-0DFD-A70F-010A7C2D717D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4DDFE305-46D3-44D6-B9FD-B3D0547DABBD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4DDFE305-46D3-44D6-B9FD-B3D0547DABBD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4DDFE305-46D3-44D6-B9FD-B3D0547DABBD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4DDFE305-46D3-44D6-B9FD-B3D0547DABBD}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

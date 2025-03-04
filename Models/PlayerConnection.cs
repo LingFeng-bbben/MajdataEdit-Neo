@@ -46,17 +46,20 @@ internal class PlayerConnection : IDisposable
     {
         try
         {
-            _client = new WebSocket(url);
-            _client.OnClose += OnClose;
-            _client.OnOpen += OnOpen;
-            _client.OnMessage += OnMessage;
-            _client.OnError += OnError;
-            _client.Connect();
-            while (!_client.IsAlive)
+            await Task.Run(async () =>
             {
-                token.ThrowIfCancellationRequested();
-                await Task.Yield();
-            }
+                _client = new WebSocket(url);
+                _client.OnClose += OnClose;
+                _client.OnOpen += OnOpen;
+                _client.OnMessage += OnMessage;
+                _client.OnError += OnError;
+                _client.Connect();
+                while (!_client.IsAlive)
+                {
+                    token.ThrowIfCancellationRequested();
+                    await Task.Yield();
+                }
+            });
             return true;
         }
         catch

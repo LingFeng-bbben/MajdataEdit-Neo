@@ -9,7 +9,7 @@ namespace MajdataEdit_Neo.Modules.AutoSave;
 /// <summary>
 ///     全局自动保存上下文
 /// </summary>
-public class GlobalAutoSaveContext : IAutoSaveContext
+internal class GlobalAutoSaveContext : IAutoSaveContext
 {
     public string GetSavePath()
     {

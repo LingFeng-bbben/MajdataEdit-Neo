@@ -6,7 +6,7 @@
 using System.Collections.Generic;
 
 namespace MajdataEdit_Neo.Modules.AutoSave;
-internal interface IAutoSaveRecoverer
+public interface IAutoSaveRecoverer
 {
     /// <summary>
     ///     获取本地的自动保存文件列表

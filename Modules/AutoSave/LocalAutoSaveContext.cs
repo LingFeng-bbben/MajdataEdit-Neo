@@ -7,7 +7,7 @@ namespace MajdataEdit_Neo.Modules.AutoSave;
 /// <summary>
 ///     本地自动保存上下文
 /// </summary>
-public class LocalAutoSaveContext : IAutoSaveContext
+internal class LocalAutoSaveContext : IAutoSaveContext
 {
     public string GetSavePath()
     {

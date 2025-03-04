@@ -8,7 +8,7 @@ namespace MajdataEdit_Neo.Modules.AutoSave;
 ///     自动保存行为接口
 ///     职责仅为进行自动保存行为
 /// </summary>
-internal interface IAutoSave
+internal interface IAutoSaver
 {
     /// <summary>
     ///     执行自动保存行为

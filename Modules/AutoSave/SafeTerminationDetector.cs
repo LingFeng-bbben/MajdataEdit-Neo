@@ -11,7 +11,7 @@ namespace MajdataEdit_Neo.Modules.AutoSave;
 ///     异常退出检测器
 ///     单例运行，生命周期等同于Edit
 /// </summary>
-public sealed class SafeTerminationDetector
+internal sealed class SafeTerminationDetector
 {
     public readonly string RecordPath = Environment.CurrentDirectory + "/PROGRAM_RUNNING";
 

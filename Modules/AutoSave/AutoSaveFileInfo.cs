@@ -10,15 +10,15 @@ public class AutoSaveFileInfo
     /// <summary>
     ///     自动保存文件名
     /// </summary>
-    public string? FileName;
+    public string? FileName { get; init; }
 
     /// <summary>
     ///     原先的文件路径
     /// </summary>
-    public string? RawPath;
+    public string? RawPath { get; init; }
 
     /// <summary>
     ///     自动保存时间
     /// </summary>
-    public long SavedTime;
+    public long SavedTime { get; set; }
 }

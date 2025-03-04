@@ -5,28 +5,24 @@
 
 namespace MajdataEdit_Neo.Modules.AutoSave;
 /// <summary>
-///     本地自动保存
-///     它将自动保存的文件存储在当前谱面的目录中
+///     全局自动保存
+///     它将自动保存的文件存储在majdata的根目录中
 /// </summary>
-public class LocalAutoSave : IAutoSave
+internal class GlobalAutoSaver : IAutoSaver
 {
     private readonly IAutoSaveIndexManager indexManager = new AutoSaveIndexManager();
-    private readonly IAutoSaveContext saveContext = new LocalAutoSaveContext();
+    private readonly IAutoSaveContext saveContext = new GlobalAutoSaveContext();
 
-    public LocalAutoSave()
+    public GlobalAutoSaver()
     {
-        indexManager.SetMaxAutoSaveCount(AutoSaveManager.LOCAL_AUTOSAVE_MAX_COUNT);
+        indexManager.ChangePath(saveContext.GetSavePath());
+        indexManager.SetMaxAutoSaveCount(AutoSaveManager.GLOBAL_AUTOSAVE_MAX_COUNT);
     }
 
 
     public bool DoAutoSave()
     {
-        // 本地自动保存前 总是尝试将当前目录更新到目前打开的文件夹上
-        indexManager.ChangePath(saveContext.GetSavePath());
-
         var newSaveFilePath = indexManager.GetNewAutoSaveFileName();
-
-        // TODO: FumenContentProvider
 
         //SimaiProcess.SaveData(newSaveFilePath);
 

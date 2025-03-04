@@ -7,7 +7,7 @@ using System.Collections.Generic;
 using System.IO;
 
 namespace MajdataEdit_Neo.Modules.AutoSave;
-public class AutoSaveRecoverer : IAutoSaveRecoverer
+internal class AutoSaveRecoverer : IAutoSaveRecoverer
 {
     private readonly IAutoSaveContext globalContext = new GlobalAutoSaveContext();
     private readonly IAutoSaveIndexManager globalIndex;

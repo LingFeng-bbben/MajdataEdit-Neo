@@ -10,7 +10,7 @@ namespace MajdataEdit_Neo.Modules.AutoSave;
 /// <summary>
 ///     自动保存索引 用于索引当前环境中自动保存的文件
 /// </summary>
-public class AutoSaveIndex
+internal class AutoSaveIndex
 {
     /// <summary>
     ///     已存在的自动保存文件数量

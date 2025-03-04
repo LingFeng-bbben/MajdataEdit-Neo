@@ -408,7 +408,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
         playStartTime = TrackTime;
         _textEditor = textEditor;
-        await _playerConnection.ParseAndPlayAsync(playStartTime, Offset, CurrentSimaiFile.RawCharts[SelectedDifficulty], 1);
+        await _playerConnection.ParseAndPlayAsync(TrackTime, Offset, CurrentSimaiFile.RawCharts[SelectedDifficulty], 1);
     }
     TextEditor _textEditor;
     private async void _playerConnection_OnPlayStarted(object sender, MajWsResponseType e)

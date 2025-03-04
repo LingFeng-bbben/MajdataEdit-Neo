@@ -15,6 +15,8 @@ using ErrorEventArgs = WebSocketSharp.ErrorEventArgs;
 using System.Diagnostics;
 using MajdataEdit_Neo.Utils;
 using Avalonia.Threading;
+using System.Collections.Concurrent;
+using MsBox.Avalonia.Enums;
 
 namespace MajdataEdit_Neo.Models;
 internal class PlayerConnection : IDisposable
@@ -25,7 +27,10 @@ internal class PlayerConnection : IDisposable
 
     public delegate void NotifyPlayStartedEventHandler(object sender, MajWsResponseType e);
     public event NotifyPlayStartedEventHandler? OnPlayStarted;
+
+    ConcurrentQueue<MessageEventArgs> _playerMessages = new();
     WebSocket _client = new("ws://127.0.0.1:8083/majdata");
+    Task _listenerTask = Task.CompletedTask;
     readonly static JsonSerializerOptions JSON_READER_OPTIONS = new()
     {
         Converters =
@@ -59,6 +64,8 @@ internal class PlayerConnection : IDisposable
                     token.ThrowIfCancellationRequested();
                     await Task.Yield();
                 }
+                if(_listenerTask.IsCompleted)
+                    _listenerTask = Task.Run(StartToListenWebSocket);
             });
             return true;
         }
@@ -74,41 +81,17 @@ internal class PlayerConnection : IDisposable
     }
     void OnClose(object? sender, CloseEventArgs args)
     {
-
-    }
-    async void OnMessage(object? sender, MessageEventArgs args)
-    {
-        await Task.Run(async () =>
-        {
-            var resp = JsonSerializer.Deserialize<MajWsResponseBase>(args.Data,JSON_READER_OPTIONS);
-            switch (resp.responseType) {
-                case MajWsResponseType.Heartbeat:
-                    var status = JsonSerializer.Deserialize<ViewSummary>(resp.responseData?.ToString() ?? string.Empty, JSON_READER_OPTIONS);
-                    _viewSummary = status;
-                    break;
-                case MajWsResponseType.PlayResumed:
-                case MajWsResponseType.PlayStarted:
-                    _viewSummary = new ViewSummary()
-                    {
-                        State = ViewStatus.Playing,//hack
-                    };
-                    OnPlayStarted?.Invoke(this, resp.responseType);
-                    break;
-                case MajWsResponseType.Error:
-                    await Dispatcher.UIThread.Invoke(async () => {
-                        await MessageBox.ShowAsync(resp.responseData.ToString(), "Error", icon: MsBox.Avalonia.Enums.Icon.Error);
-                    });
-                    break;
-                default:
-                    Debug.WriteLine(args.Data);
-                    break;
-            }
+        Dispatcher.UIThread.Invoke(async () => {
+            await MessageBox.ShowAsync("Player disconnected", "Warning", icon: Icon.Warning);
         });
-        
+    }
+    void OnMessage(object? sender, MessageEventArgs args)
+    {
+        _playerMessages.Enqueue(args);
     }
     void OnError(object? sender, ErrorEventArgs args)
     {
-
+        Debug.WriteLine(args);
     }
 /*    public async Task LoadAsync(byte[] track,
                                        byte[] cover,
@@ -199,12 +182,11 @@ internal class PlayerConnection : IDisposable
         };
         await SendAsync(req);
     }
-
     async Task SendAsync(MajWsRequestBase req)
     {
         EnsureConnectedToPlayer();
         var json = JsonSerializer.Serialize(req, JSON_READER_OPTIONS);
-        _client.Send(json);
+        await Task.Run(() => _client.Send(json));
     }
     void EnsureConnectedToPlayer()
     {
@@ -212,7 +194,46 @@ internal class PlayerConnection : IDisposable
             return;
         throw new PlayerNotConnectedException();
     }
-
+    async Task StartToListenWebSocket()
+    {
+        while(IsConnected)
+        {
+            try
+            {
+                while(_playerMessages.TryDequeue(out var args))
+                {
+                    var resp = JsonSerializer.Deserialize<MajWsResponseBase>(args.Data, JSON_READER_OPTIONS);
+                    switch (resp.responseType)
+                    {
+                        case MajWsResponseType.Heartbeat:
+                            var status = JsonSerializer.Deserialize<ViewSummary>(resp.responseData?.ToString() ?? string.Empty, JSON_READER_OPTIONS);
+                            _viewSummary = status;
+                            break;
+                        case MajWsResponseType.PlayResumed:
+                        case MajWsResponseType.PlayStarted:
+                            _viewSummary = new ViewSummary()
+                            {
+                                State = ViewStatus.Playing,//hack
+                            };
+                            OnPlayStarted?.Invoke(this, resp.responseType);
+                            break;
+                        case MajWsResponseType.Error:
+                            await Dispatcher.UIThread.Invoke(async () => {
+                                await MessageBox.ShowAsync(resp.responseData.ToString() ?? "Unknown Error", "Error", icon: Icon.Error);
+                            });
+                            break;
+                        default:
+                            Debug.WriteLine(args.Data);
+                            break;
+                    }
+                }
+            }
+            finally
+            {
+                await Task.Delay(100);
+            }
+        }
+    }
     public void Dispose()
     {
         _client.Close();

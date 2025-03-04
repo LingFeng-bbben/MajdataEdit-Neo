@@ -307,19 +307,30 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private async Task EditorLoad()
     {
-        var useOgg = File.Exists(_maidataDir + "/track.ogg");
-        var trackPath = _maidataDir + "/track" + (useOgg ? ".ogg" : ".mp3");
+        try
+        {
+            IsPlayControlEnabled = false;
+            var useOgg = File.Exists(_maidataDir + "/track.ogg");
+            var trackPath = _maidataDir + "/track" + (useOgg ? ".ogg" : ".mp3");
 
-        var bgPath = _maidataDir + "/bg.jpg";
-        if (!File.Exists(bgPath)) bgPath = _maidataDir + "/bg.png";
-        else if (!File.Exists(bgPath)) bgPath = "";
+            var bgPath = _maidataDir + "/bg.jpg";
+            if (!File.Exists(bgPath)) bgPath = _maidataDir + "/bg.png";
+            else if (!File.Exists(bgPath)) bgPath = "";
 
-        var pvPath = _maidataDir + "/pv.mp4";
-        if (!File.Exists(pvPath)) pvPath = _maidataDir + "/bg.mp4";
-        else if (!File.Exists(pvPath)) pvPath = "";
+            var pvPath = _maidataDir + "/pv.mp4";
+            if (!File.Exists(pvPath)) pvPath = _maidataDir + "/bg.mp4";
+            else if (!File.Exists(pvPath)) pvPath = "";
 
-        await _playerConnection.LoadAsync(trackPath, bgPath, pvPath);
-        IsPlayControlEnabled = true;
+            if (!await EnsureConnectedToPlayerAsync())
+            {
+                return;
+            }
+            await _playerConnection.LoadAsync(trackPath, bgPath, pvPath);
+        }
+        finally
+        {
+            IsPlayControlEnabled = true;
+        }
     }
 
     //return: isCancel
@@ -414,86 +425,108 @@ public partial class MainWindowViewModel : ViewModelBase
     private double playStartTime = 0d;
     public async void PlayPause(TextEditor textEditor)
     {
-        IsPlayControlEnabled = false;
-        if(!await EnsureConnectedToPlayerAsync())
+        bool shouldRecoverPlayControl = true;
+        try
         {
-            IsPlayControlEnabled = true;
-            return;
+            IsPlayControlEnabled = false;
+            if (!await EnsureConnectedToPlayerAsync(true))
+            {
+                return;
+            }
+            switch (_playerConnection.ViewSummary.State)
+            {
+                case ViewStatus.Playing:
+                    await _playerConnection.PauseAsync();
+                    return;
+                case ViewStatus.Paused:
+                    await _playerConnection.ResumeAsync();
+                    playStartTime = TrackTime;
+                    return;
+            }
+            shouldRecoverPlayControl = false;
+            playStartTime = TrackTime;
+            _textEditor = textEditor;
+            await _playerConnection.ParseAndPlayAsync(TrackTime, Offset, CurrentSimaiFile.RawCharts[SelectedDifficulty], 1);
         }
-        switch(_playerConnection.ViewSummary.State)
+        finally
         {
-            case ViewStatus.Playing:
-                await _playerConnection.PauseAsync();
+            if (shouldRecoverPlayControl)
                 IsPlayControlEnabled = true;
-                return;
-            case ViewStatus.Paused:
-                await _playerConnection.ResumeAsync();
-                playStartTime = TrackTime;
-                IsPlayControlEnabled = true;
-                return;
         }
-
-        playStartTime = TrackTime;
-        _textEditor = textEditor;
-        await _playerConnection.ParseAndPlayAsync(TrackTime, Offset, CurrentSimaiFile.RawCharts[SelectedDifficulty], 1);
     }
     TextEditor _textEditor;
     private async void _playerConnection_OnPlayStarted(object sender, MajWsResponseType e)
     {
         IsPlayControlEnabled = true;
-        Stopwatch watch = new Stopwatch();
-        watch.Start();
-        while (_playerConnection.ViewSummary.State == ViewStatus.Playing)
+        await Task.Run(async () =>
         {
-            TrackTime = watch.ElapsedMilliseconds / 1000d + playStartTime;
-            if (IsFollowCursor)
+            Stopwatch watch = new Stopwatch();
+            watch.Start();
+            var timeA = watch.Elapsed;
+            while (_playerConnection.ViewSummary.State == ViewStatus.Playing)
             {
-                var nearestNote = CurrentSimaiChart.CommaTimings.MinBy(o => Math.Abs(o.Timing + Offset - TrackTime));
-                if (nearestNote is null) continue;
-
-                var point = new Point(nearestNote.RawTextPositionX, nearestNote.RawTextPositionY);
-                Dispatcher.UIThread.Invoke(() =>
+                TrackTime = watch.ElapsedMilliseconds / 1000d + playStartTime;
+                if (IsFollowCursor)
                 {
-                    SeekToDocPos(point, _textEditor);
-                });
-                
+                    var nearestNote = CurrentSimaiChart.CommaTimings.MinBy(o => Math.Abs(o.Timing + Offset - TrackTime));
+                    if (nearestNote is null) continue;
+
+                    var point = new Point(nearestNote.RawTextPositionX, nearestNote.RawTextPositionY);
+                    await Dispatcher.UIThread.InvokeAsync(() =>
+                    {
+                        SeekToDocPos(point, _textEditor);
+                    });
+
+                }
+                var timeB = watch.Elapsed;
+                var waitTime = Math.Max(16 - (int)(timeB - timeA).TotalMilliseconds, 0);
+                await Task.Delay(waitTime);
+                if (!_playerConnection.IsConnected)
+                    break;
             }
-            await Task.Delay(16);
-        }
+        });
     }
 
     public async void Stop(bool isBackToStart = true)
     {
-        IsPlayControlEnabled = false;
-        if (!await EnsureConnectedToPlayerAsync())
+        try
         {
+            IsPlayControlEnabled = false;
+            if (!await EnsureConnectedToPlayerAsync())
+            {
+                if (isBackToStart)
+                    TrackTime = playStartTime;
+                return;
+            }
+            switch (_playerConnection.ViewSummary.State)
+            {
+                case ViewStatus.Ready:
+                case ViewStatus.Playing:
+                case ViewStatus.Paused:
+                    break;
+                default:
+                    return;
+            }
+            await _playerConnection.StopAsync();
             if (isBackToStart)
                 TrackTime = playStartTime;
-            IsPlayControlEnabled = true;
-            return;
         }
-        switch (_playerConnection.ViewSummary.State)
+        finally
         {
-            case ViewStatus.Ready:
-            case ViewStatus.Playing:
-            case ViewStatus.Paused:
-                break;
-            default:
-                IsPlayControlEnabled = true;
-                return;
+            IsPlayControlEnabled = true;
         }
-        await _playerConnection.StopAsync();
-        if (isBackToStart)
-            TrackTime = playStartTime;
-        IsPlayControlEnabled = true;
+        
     }
-    async Task<bool> EnsureConnectedToPlayerAsync()
+    async Task<bool> EnsureConnectedToPlayerAsync(bool showMessageBox = false)
     {
         if (!_playerConnection.IsConnected)
         {
             if (!await _playerConnection.ConnectAsync())
             {
-                await MessageBox.ShowWindowDialogAsync("Cannot connect to player", "Warning", ButtonEnum.Ok, Icon.Warning);
+                if(showMessageBox)
+                {
+                    await MessageBox.ShowWindowDialogAsync("Cannot connect to player", "Warning", ButtonEnum.Ok, Icon.Warning);
+                }
 
                 return false;
             }

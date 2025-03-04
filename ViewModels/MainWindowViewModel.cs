@@ -23,6 +23,7 @@ using MajdataEdit_Neo.Utils;
 using Avalonia.Threading;
 using MajdataEdit_Neo.Modules.AutoSave;
 using MajdataEdit_Neo.Modules.AutoSave.Contexts;
+using System.Runtime.InteropServices;
 
 namespace MajdataEdit_Neo.ViewModels;
 
@@ -543,6 +544,40 @@ public partial class MainWindowViewModel : ViewModelBase
                     _isUpdatingAutoSaveContext = false;
                 }
             });
+        }
+    }
+    public void AboutButtonClicked(int index)
+    {
+        switch (index)
+        {
+            case 0:
+                OpenBrowser("https://discord.gg/AcWgZN7j6K");
+                break;
+            case 1:
+                OpenBrowser("https://qm.qq.com/q/GAxbFZHP6A");
+                break;
+            case 2:
+                OpenBrowser("https://github.com/LingFeng-bbben/MajdataEdit-Neo");
+                break;
+            case 3:
+                OpenBrowser("https://majdata.net/");
+                break;
+        }
+    }
+
+    private void OpenBrowser(string url)
+    {
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            Process.Start(new ProcessStartInfo(url) { UseShellExecute = true }); // Works ok on windows
+        }
+        else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+        {
+            Process.Start("xdg-open", url);  // Works ok on linux
+        }
+        else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+        {
+            Process.Start("open", url); // Not tested
         }
     }
     class InternalAutoSaveContext : IAutoSaveContext, IAutoSaveContentProvider<string>

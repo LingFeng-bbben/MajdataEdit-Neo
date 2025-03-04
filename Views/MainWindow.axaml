@@ -57,8 +57,6 @@
           <MenuItem Header="_Upload to Majnet"/>
         </MenuItem>
         <MenuItem Header="_Edit">
-          <MenuItem Header="Find and Replace" PointerPressed="FindReplace_PointerPressed"/>
-          <Separator/>
           <MenuItem Header="Mirror Horizontally" CommandParameter="{Binding #Editor}" Command="{Binding MirrorHorizontal}">
             <MenuItem.Icon>
               <PathIcon Data="{StaticResource mirror_h}"/>
@@ -86,6 +84,8 @@
           </MenuItem>
           <Separator/>
           <MenuItem Header="Chart Info" Command="{Binding OpenChartInfoWindow}"/>
+          <Separator/>
+          <MenuItem Header="Find and Replace" PointerPressed="FindReplace_PointerPressed"/>
         </MenuItem>
         <MenuItem Header="_Tools">
           <MenuItem Header="BPM Tap" Command="{Binding OpenBpmTapWindow}"/>
@@ -126,11 +126,11 @@
       </StackPanel>
 
 
-      <Button IsEnabled="{Binding IsPlayControlEnabled}" HotKey="Ctrl+Shift+X" Grid.Row="3" Grid.Column="1" Height="50" Width="50" Margin="5"
+      <Button IsEnabled="{Binding IsPlayControlEnabled}" HotKey="Ctrl+Shift+z" Grid.Row="3" Grid.Column="1" Height="50" Width="50" Margin="5"
               CommandParameter="true" Command="{Binding Stop}">
         <PathIcon Width="13" Data="{StaticResource stop}"/>
       </Button>
-      <Button IsEnabled="{Binding IsPlayControlEnabled}" HotKey="Ctrl+Shift+C" Grid.Row="3" Grid.Column="2" Height="50" Width="50" Margin="5"
+      <Button IsEnabled="{Binding IsPlayControlEnabled}" HotKey="Ctrl+Shift+x" Grid.Row="3" Grid.Column="2" Height="50" Width="50" Margin="5"
               CommandParameter="{Binding #Editor}" Command="{Binding PlayPause}">
         <PathIcon Data="{StaticResource play_pause}"/>
       </Button>
@@ -179,7 +179,7 @@
                                        Height="100" Grid.Row="4" Grid.ColumnSpan="4"
                                        Time="{Binding TrackTime}" TrackIf="{Binding SongTrackInfo}"
                                        ZoomLevel="{Binding TrackZoomLevel}" SimaiChart="{Binding CurrentSimaiChart}"
-                                       Offset="{Binding Offset}" CaretTime="{Binding CaretTime}"/>
+                                       Offset="{Binding Offset}" CaretTime="{Binding CaretTime}" IsAnimated ="{Binding IsAnimated}"/>
       <DockPanel Grid.Row="4" >
         <Button Name="ZoomOut" DockPanel.Dock="Bottom" Width="30" Height="30" Margin="10">
           <PathIcon Width="8" Data="{StaticResource zoom_out}"/>
@@ -208,6 +208,7 @@
       <Button IsVisible="False" HotKey="Ctrl+I" CommandParameter="{Binding #Editor}" Command="{Binding TurnNegative45}"/>
       <Button IsVisible="False" HotKey="Ctrl+S"  Command="{Binding SaveFile}"/>
       <Button IsVisible="False" HotKey="Ctrl+O" Command="{Binding OpenFile}"/>
+      <Button IsVisible="False" IsEnabled="{Binding IsPlayControlEnabled}" HotKey="Ctrl+Shift+C" Command="{Binding PlayStop}" CommandParameter="{Binding #Editor}"/>
     </Grid>
     <DockPanel >
       <Image DockPanel.Dock="Right"

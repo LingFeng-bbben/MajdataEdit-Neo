@@ -136,7 +136,7 @@ public partial class MainWindowViewModel : ViewModelBase
         try
         {
             CurrentSimaiChart = await _simaiParser.ParseChartAsync(null, null, content);
-            IsSaved = true;
+            //IsSaved = true;
         }
         catch (Exception ex)
         {
@@ -175,6 +175,8 @@ public partial class MainWindowViewModel : ViewModelBase
     private bool isFollowCursor;
     [ObservableProperty]
     private bool isPlayControlEnabled = true;
+    [ObservableProperty]
+    private bool isAnimated = true;
 
     string _maidataDir = "";
     float _offset = 0;
@@ -241,7 +243,7 @@ public partial class MainWindowViewModel : ViewModelBase
     public void SetCaretTime(Point rawPostion, bool setTrackTime)
     {
         if (CurrentSimaiChart is null) return;
-        var nearestNote = CurrentSimaiChart.CommaTimings.MinBy(o => Math.Abs(o.RawTextPositionX - rawPostion.X) + 9999*Math.Abs(o.RawTextPositionY - rawPostion.Y+1));
+        var nearestNote = CurrentSimaiChart.CommaTimings.MinBy(o => Math.Abs(Math.Clamp(o.RawTextPositionX - rawPostion.X ,int.MinValue,0)) + 9999*Math.Abs(o.RawTextPositionY - rawPostion.Y+1));
         if (nearestNote is null) return;
         CaretTime = nearestNote.Timing;
         if (setTrackTime) {
@@ -371,11 +373,11 @@ public partial class MainWindowViewModel : ViewModelBase
         }
         return false;
     }
-    public void SaveFile()
+    public async  void SaveFile()
     {
         if (CurrentSimaiFile is null) return;
         IsSaved = true;
-        _simaiParser.DeParse(CurrentSimaiFile, _maidataDir + "/maidata.txt");
+        await _simaiParser.DeParseAsync(CurrentSimaiFile, _maidataDir + "/maidata.txt");
     }
     public void OpenBpmTapWindow()
     {
@@ -457,6 +459,40 @@ public partial class MainWindowViewModel : ViewModelBase
                 IsPlayControlEnabled = true;
         }
     }
+
+    public async void PlayStop(TextEditor textEditor)
+    {
+        bool shouldRecoverPlayControl = true;
+        try
+        {
+            IsPlayControlEnabled = false;
+            if (!await EnsureConnectedToPlayerAsync(true))
+            {
+                TrackTime = playStartTime;
+                return;
+            }
+            switch (_playerConnection.ViewSummary.State)
+            {
+                case ViewStatus.Playing:
+                    await _playerConnection.StopAsync();
+                    TrackTime = playStartTime;
+                    return;
+                case ViewStatus.Paused:
+                    await _playerConnection.ResumeAsync();
+                    playStartTime = TrackTime;
+                    return;
+            }
+            shouldRecoverPlayControl = false;
+            playStartTime = TrackTime;
+            _textEditor = textEditor;
+            await _playerConnection.ParseAndPlayAsync(TrackTime, Offset, CurrentSimaiFile.RawCharts[SelectedDifficulty], 1);
+        }
+        finally
+        {
+            if (shouldRecoverPlayControl)
+                IsPlayControlEnabled = true;
+        }
+    }
     TextEditor _textEditor;
     private async void _playerConnection_OnPlayStarted(object sender, MajWsResponseType e)
     {
@@ -466,6 +502,7 @@ public partial class MainWindowViewModel : ViewModelBase
             Stopwatch watch = new Stopwatch();
             watch.Start();
             var timeA = watch.Elapsed;
+            IsAnimated = false;
             while (_playerConnection.ViewSummary.State == ViewStatus.Playing)
             {
                 TrackTime = watch.ElapsedMilliseconds / 1000d + playStartTime;
@@ -487,6 +524,7 @@ public partial class MainWindowViewModel : ViewModelBase
                 if (!_playerConnection.IsConnected)
                     break;
             }
+            IsAnimated = true;
         });
     }
 
@@ -544,7 +582,7 @@ public partial class MainWindowViewModel : ViewModelBase
         editor.Focus();
     }
 
-    private void MainWindowViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    private async void MainWindowViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
         //Debug.WriteLine(e.PropertyName);
         if (e.PropertyName == nameof(CurrentSimaiFile))
@@ -552,8 +590,8 @@ public partial class MainWindowViewModel : ViewModelBase
             Debug.WriteLine("SimaiFileChanged");
             IsSaved = false;
             Stop();
-            
-            lock(_syncLock)
+
+            lock (_syncLock)
             {
                 if ((DateTime.Now - _lastUpdateAutoSaveContextTime).TotalMilliseconds < AUTOSAVE_CONTEXT_UPDATE_INTERVAL_MS)
                     return;
@@ -562,24 +600,23 @@ public partial class MainWindowViewModel : ViewModelBase
                 _isUpdatingAutoSaveContext = true;
                 _lastUpdateAutoSaveContextTime = DateTime.Now;
             }
-            Task.Run(async () =>
+
+            try
             {
-                try
-                {
-                    if (CurrentSimaiFile is null)
-                        return;
-                    var maidata = await SimaiParser.Shared.DeParseAsStringAsync(CurrentSimaiFile);
-                    _internalAutoSaveContext.Content = maidata;
-                }
-                catch(Exception e)
-                {
-                    Debug.WriteLine(e);
-                }
-                finally
-                {
-                    _isUpdatingAutoSaveContext = false;
-                }
-            });
+                if (CurrentSimaiFile is null)
+                    return;
+                var maidata = await SimaiParser.Shared.DeParseAsStringAsync(CurrentSimaiFile);
+                _internalAutoSaveContext.Content = maidata;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine(ex);
+            }
+            finally
+            {
+                _isUpdatingAutoSaveContext = false;
+            }
+
         }
     }
     public void AboutButtonClicked(int index)

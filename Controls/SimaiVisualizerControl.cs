@@ -101,6 +101,19 @@ class SimaiVisualizerControl : Control
         set { SetAndRaise(CaretTimeProperty, ref _caretTime, value); }
     }
 
+    public static readonly DirectProperty<SimaiVisualizerControl, bool> IsAnimatedProperty =
+    AvaloniaProperty.RegisterDirect<SimaiVisualizerControl, bool>(
+        nameof(IsAnimated),
+        o => o.IsAnimated,
+        (o, v) => o.IsAnimated = v,
+        defaultBindingMode: Avalonia.Data.BindingMode.OneWay);
+    private bool _isAnimated;
+    public bool IsAnimated
+    {
+        get { return _isAnimated; }
+        set { SetAndRaise(IsAnimatedProperty, ref _isAnimated, value); }
+    }
+
     //Override Render
     private readonly GlyphRun _noSkia;
     public SimaiVisualizerControl()
@@ -123,8 +136,9 @@ class SimaiVisualizerControl : Control
         private readonly float _offset;
         private static double _lastTime;
         private static double _lastZoom;
+        private readonly bool _isAnimated;
         public CustomDrawOp(Rect bounds, GlyphRun noSkia, 
-            TrackInfo trackInfo, double time, float zoomLevel,SimaiChart simaiChart,float offset, double caretTime)
+            TrackInfo trackInfo, double time, float zoomLevel,SimaiChart simaiChart,float offset, double caretTime,bool isAnimated)
         {
             _noSkia = noSkia.TryCreateImmutableGlyphRunReference();
             _trackInfo = trackInfo;
@@ -133,6 +147,7 @@ class SimaiVisualizerControl : Control
             _simaiChart = simaiChart;
             _offset = offset;
             _caretTime = caretTime;
+            _isAnimated = isAnimated;
             Bounds = bounds;
         }
         public void Dispose(){}
@@ -162,7 +177,16 @@ class SimaiVisualizerControl : Control
                 //Actuall Drawing here
                 //make it smooth
                 //TODO; Add Deltatime
-                _lastTime += 0.2 * (_time - _lastTime);
+                if (_isAnimated)
+                {
+                    _lastTime += 0.2 * (_time - _lastTime);
+
+                }
+                else
+                {
+                    _lastTime = _time;
+                }
+
                 _lastZoom += 0.2 * (_zoomLevel - _lastZoom);
 
                 var waveLevels = _trackInfo.RawWave; 
@@ -288,6 +312,27 @@ class SimaiVisualizerControl : Control
                         var seprate = (height - 30f) / 8f;
                         var y = (float)(noteD.StartPosition * seprate + 10f);
 
+                        if (noteD.IsHanabi)
+                        {
+                            var xDeltaHanabi = (float)(1f / step) * linewidth; // Hanabi is 1s due to frame analyze
+                            var rectangleF = new SKRect(x, 0, x + xDeltaHanabi, (float)height);
+
+                            if (noteD.Type == SimaiNoteType.TouchHold)
+                                rectangleF.Left += (float)(noteD.HoldTime / step) * linewidth;
+
+                            using (var paint1 = new SKPaint())
+                            {
+                                paint1.Shader = SKShader.CreateLinearGradient(
+                                    new SKPoint(rectangleF.Left, rectangleF.Top),
+                                    new SKPoint(rectangleF.Right, rectangleF.Top),
+                                    new[] { new SKColor(255, 0, 0, 100), new SKColor(255, 0, 0, 0) },
+                                    null,
+                                    SKShaderTileMode.Clamp
+                                );
+                                canvas.DrawRect(rectangleF, paint1);
+                            }
+                        }
+
                         switch (noteD.Type)
                         {
                             case SimaiNoteType.Tap:
@@ -348,7 +393,7 @@ class SimaiVisualizerControl : Control
 
                                 if (!noteD.IsSlideNoHead)
                                 {
-                                    paint.Color = noteD.IsSlideBreak ? SKColors.OrangeRed :
+                                    paint.Color = noteD.IsBreak ? SKColors.OrangeRed :
                                                   isEach ? SKColors.Gold :
                                                   SKColors.DeepSkyBlue;
                                     var rad = 5f;
@@ -399,7 +444,7 @@ class SimaiVisualizerControl : Control
     public override void Render(DrawingContext context)
     {
         context.Custom(new CustomDrawOp(new Rect(0, 0, Bounds.Width, Bounds.Height), _noSkia,
-            TrackIf, Time, ZoomLevel, SimaiChart, Offset, CaretTime));
+            TrackIf, Time, ZoomLevel, SimaiChart, Offset, CaretTime, IsAnimated));
         Dispatcher.UIThread.InvokeAsync(InvalidateVisual, DispatcherPriority.Background);
     }
 }

@@ -85,9 +85,11 @@ public partial class MainWindow : Window
 
     private void Caret_PositionChanged(object? sender, System.EventArgs e)
     {
+       
         var seek = textEditor.SelectionStart;
         var location = textEditor.Document.GetLocation(seek);
         viewModel.SetCaretTime(new Point(location.Column, location.Line), isCtrlKeyDown);
+        
     }
 
     static double? lastX = null;
@@ -132,6 +134,9 @@ public partial class MainWindow : Window
     {
         //TODO: add timer
         await viewModel.SetFumenContent(((TextEditor)sender).Text);
+        var seek = textEditor.SelectionStart;
+        var location = textEditor.Document.GetLocation(seek);
+        viewModel.SetCaretTime(new Point(location.Column, location.Line),false);
     }
 
     private async void FindReplace_PointerPressed(object? sender, Avalonia.Input.PointerPressedEventArgs e)

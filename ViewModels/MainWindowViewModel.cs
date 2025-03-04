@@ -228,7 +228,10 @@ public partial class MainWindowViewModel : ViewModelBase
         var time = TrackTime - delta * 0.2 * TrackZoomLevel;
         if (time < 0) time = 0;
         else if (time > SongTrackInfo.Length) time = SongTrackInfo.Length;
-        Stop(false);
+        if(_playerConnection.IsConnected)
+        {
+            Stop(false);
+        }
         TrackTime = time;
         if (CurrentSimaiChart is null) return new Point();
         var nearestNote = CurrentSimaiChart.CommaTimings.Where(o=> o.Timing + Offset - time < 0).MinBy(o => Math.Abs(o.Timing + Offset - time));

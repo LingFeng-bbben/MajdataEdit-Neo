@@ -28,9 +28,11 @@ internal class PlayerConnection : IDisposable
     public delegate void NotifyPlayStartedEventHandler(object sender, MajWsResponseType e);
     public event NotifyPlayStartedEventHandler? OnPlayStarted;
 
-    ConcurrentQueue<MessageEventArgs> _playerMessages = new();
-    WebSocket _client = new("ws://127.0.0.1:8083/majdata");
+    bool _lastState = false;
     Task _listenerTask = Task.CompletedTask;
+    WebSocket _client = new("ws://127.0.0.1:8083/majdata");
+    ConcurrentQueue<MessageEventArgs> _playerMessages = new();
+    
     readonly static JsonSerializerOptions JSON_READER_OPTIONS = new()
     {
         Converters =
@@ -77,13 +79,17 @@ internal class PlayerConnection : IDisposable
     }
     void OnOpen(object? sender, EventArgs args)
     {
-
+        _lastState = true;
     }
     void OnClose(object? sender, CloseEventArgs args)
     {
-        Dispatcher.UIThread.Invoke(async () => {
+        if (!_lastState)
+            return;
+        Dispatcher.UIThread.Invoke(async () =>
+        {
             await MessageBox.ShowAsync("Player disconnected", "Warning", icon: Icon.Warning);
         });
+        _lastState = false;
     }
     void OnMessage(object? sender, MessageEventArgs args)
     {

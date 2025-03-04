@@ -92,11 +92,11 @@
           <MenuItem Header="Compress bg.mp4"/>
         </MenuItem>
         <MenuItem Header="_About">
-          <MenuItem Header="Discord"/>
-          <MenuItem Header="QQ"/>
+          <MenuItem Header="Discord" Command="{Binding AboutButtonClicked}" CommandParameter="0"/>
+          <MenuItem Header="QQ" Command="{Binding AboutButtonClicked}" CommandParameter="1"/>
           <Separator/>
-          <MenuItem Header="Github"/>
-          <MenuItem Header="Majnet"/>
+          <MenuItem Header="Github" Command="{Binding AboutButtonClicked}" CommandParameter="2"/>
+          <MenuItem Header="Majnet" Command="{Binding AboutButtonClicked}" CommandParameter="3"/>
         </MenuItem>
       </Menu>
 

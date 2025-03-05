@@ -256,10 +256,42 @@ public partial class MainWindowViewModel : ViewModelBase
     public async void SetCaretTime(Point rawPostion, bool setTrackTime)
     {
         if (CurrentSimaiChart is null) return;
-        var nearestNote = CurrentSimaiChart.CommaTimings.MinBy(o => Math.Abs(Math.Clamp(o.RawTextPositionX - rawPostion.X ,int.MinValue,0)) + 9999*Math.Abs(o.RawTextPositionY - rawPostion.Y+1));
+        var theLine = CurrentSimaiChart.CommaTimings.Where(o => o.RawTextPositionY == rawPostion.Y-1).ToArray();
+        var nearestNote = theLine.FirstOrDefault();
+        //theLine = theLine.OrderBy(o => o.RawTextPositionX).ToArray();
+        if (theLine.Length >= 2)
+        {
+            var foundone = false;
+            for (int i = 0; i + 1 < theLine.Length; i++)
+            {
+                var note = theLine[i];
+                var nextnote = theLine[i + 1];
+                if(rawPostion.X <= note.RawTextPositionX)
+                {
+                    nearestNote = note;
+                    foundone = true;
+                    break;
+                }
+                if (note.RawTextPositionX < rawPostion.X && rawPostion.X <= nextnote.RawTextPositionX)
+                {
+                    nearestNote = nextnote;
+                    foundone = true;
+                    break;
+                }
+            }
+            if (!foundone)
+            {
+                //lets go to the next one
+                var last = theLine.LastOrDefault();
+                if (last is null) return;
+                var indexoflast = CurrentSimaiChart.CommaTimings.ToList().IndexOf(last);
+                if (indexoflast + 1 >= CurrentSimaiChart.CommaTimings.Length) return;
+                nearestNote = CurrentSimaiChart.CommaTimings[indexoflast + 1];
+            }
+        }
         if (nearestNote is null) return;
         CaretTime = nearestNote.Timing;
-        if (setTrackTime) {
+        if (IsFollowCursor||se) {
             //By pass Ctrl+Click if it's playing
             if (_playerConnection.ViewSummary.State == ViewStatus.Playing) return;
             Stop(false);

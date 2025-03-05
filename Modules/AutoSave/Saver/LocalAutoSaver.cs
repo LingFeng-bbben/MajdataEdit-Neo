@@ -13,6 +13,8 @@ namespace MajdataEdit_Neo.Modules.AutoSave.Saver;
 /// </summary>
 internal class LocalAutoSaver : IAutoSaver
 {
+    public IAutoSaveContext Context => _saveContext;
+
     readonly IAutoSaveIndexManager _indexManager;
     readonly IAutoSaveContext _saveContext;
 

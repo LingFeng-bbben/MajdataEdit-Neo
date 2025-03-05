@@ -198,6 +198,8 @@ public partial class MainWindowViewModel : ViewModelBase
         PropertyChanged += MainWindowViewModel_PropertyChanged;
         _playerConnection.OnPlayStarted += _playerConnection_OnPlayStarted;
         _playerConnection.OnPlayStopped += _playerConnection_OnPlayStopped;
+        _playerConnection.OnLoadRequired += _playerConnection_OnLoadRequired;
+        _playerConnection.OnLoadFinished += _playerConnection_OnLoadFinished;
         AutoSaveManager.Initialize(_internalAutoSaveContext,(IAutoSaveContentProvider<string>)_internalAutoSaveContext);
         _autoSaveManager = AutoSaveManager.Instance;
         _autoSaveRecoverer = _autoSaveManager.Recoverer;
@@ -321,22 +323,25 @@ public partial class MainWindowViewModel : ViewModelBase
 
             var bgPath = _maidataDir + "/bg.jpg";
             if (!File.Exists(bgPath)) bgPath = _maidataDir + "/bg.png";
-            else if (!File.Exists(bgPath)) bgPath = "";
+            if (!File.Exists(bgPath)) bgPath = "";
 
             var pvPath = _maidataDir + "/pv.mp4";
             if (!File.Exists(pvPath)) pvPath = _maidataDir + "/bg.mp4";
-            else if (!File.Exists(pvPath)) pvPath = "";
+            if (!File.Exists(pvPath)) pvPath = "";
 
-            if (!await EnsureConnectedToPlayerAsync())
+            if (!await CheckPlayerConnectionAndReconnect())
             {
                 return;
             }
             await _playerConnection.LoadAsync(trackPath, bgPath, pvPath);
         }
-        finally
+        catch
         {
-            IsPlayControlEnabled = true;
         }
+    }
+    private void _playerConnection_OnLoadFinished(object? sender, EventArgs e)
+    {
+        IsPlayControlEnabled = true;
     }
 
     //return: isCancel
@@ -435,7 +440,7 @@ public partial class MainWindowViewModel : ViewModelBase
         try
         {
             IsPlayControlEnabled = false;
-            if (!await EnsureConnectedToPlayerAsync(true))
+            if (!await CheckPlayerConnectionAndReconnect(true))
             {
                 return;
             }
@@ -467,7 +472,7 @@ public partial class MainWindowViewModel : ViewModelBase
         try
         {
             IsPlayControlEnabled = false;
-            if (!await EnsureConnectedToPlayerAsync(true))
+            if (!await CheckPlayerConnectionAndReconnect(true))
             {
                 TrackTime = playStartTime;
                 return;
@@ -534,7 +539,7 @@ public partial class MainWindowViewModel : ViewModelBase
         try
         {
             IsPlayControlEnabled = false;
-            if (!await EnsureConnectedToPlayerAsync())
+            if (!await CheckPlayerConnectionAndReconnect())
             {
                 if (isBackToStart)
                     TrackTime = playStartTime;
@@ -564,14 +569,21 @@ public partial class MainWindowViewModel : ViewModelBase
         
     }
 
-    private void _playerConnection_OnPlayStopped(object sender, MajWsResponseType e)
+    private async void _playerConnection_OnPlayStopped(object sender, MajWsResponseType e)
     {
+        await Task.Delay(32); // Wait the OnPlayStarted Loop to end
         if (_isBackToStartOnPlayStop)
             TrackTime = playStartTime;
         IsPlayControlEnabled = true;
     }
-    async Task<bool> EnsureConnectedToPlayerAsync(bool showMessageBox = false)
+
+    private async void _playerConnection_OnLoadRequired(object? sender, EventArgs e)
     {
+        await EditorLoad();
+    }
+    async Task<bool> CheckPlayerConnectionAndReconnect(bool showMessageBox = false)
+    {
+        //TODO: 改成弱提示，比如状态指示灯
         if (!_playerConnection.IsConnected)
         {
             if (!await _playerConnection.ConnectAsync())
@@ -583,6 +595,9 @@ public partial class MainWindowViewModel : ViewModelBase
 
                 return false;
             }
+            if(showMessageBox)
+                await MessageBox.ShowWindowDialogAsync("Player Reconnected", "Info", ButtonEnum.Ok, Icon.Info);
+            return false;
         }
         return true;
     }
@@ -601,7 +616,7 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             Debug.WriteLine("SimaiFileChanged");
             IsSaved = false;
-            Stop();
+            Stop(false);
 
             lock (_syncLock)
             {

@@ -28,6 +28,9 @@ internal class PlayerConnection : IDisposable
     public delegate void NotifyViewStateChangedEventHandler(object sender, MajWsResponseType e);
     public event NotifyViewStateChangedEventHandler? OnPlayStarted;
     public event NotifyViewStateChangedEventHandler? OnPlayStopped;
+    
+    public event EventHandler? OnLoadRequired;
+    public event EventHandler? OnLoadFinished;
 
     bool _lastState = false;
     Task _listenerTask = Task.CompletedTask;
@@ -162,7 +165,10 @@ internal class PlayerConnection : IDisposable
     }
     public async Task ParseAndPlayAsync(double startAt, double offset, string fumen,float speed=1)
     {
-        if (ViewSummary.State != ViewStatus.Loaded && ViewSummary.State != ViewStatus.Error) throw new InvalidOperationException();
+        if (ViewSummary.State != ViewStatus.Loaded && ViewSummary.State != ViewStatus.Error){
+            OnLoadRequired?.Invoke(this,new EventArgs());
+            return;
+        }
         var req = new MajWsRequestBase()
         {
             requestType = MajWsRequestType.Play,
@@ -213,6 +219,10 @@ internal class PlayerConnection : IDisposable
                         case MajWsResponseType.Heartbeat:
                         case MajWsResponseType.Ok:
                             _viewSummary = JsonSerializer.Deserialize<ViewSummary>(resp.responseData?.ToString() ?? string.Empty, JSON_READER_OPTIONS);
+                            break;
+                        case MajWsResponseType.LoadOk:
+                            _viewSummary = JsonSerializer.Deserialize<ViewSummary>(resp.responseData?.ToString() ?? string.Empty, JSON_READER_OPTIONS);
+                            OnLoadFinished?.Invoke(this, new EventArgs());
                             break;
                         case MajWsResponseType.PlayResumed:
                         case MajWsResponseType.PlayStarted:

@@ -78,35 +78,20 @@ public sealed class AutoSaveManager
         }
     }
     public static Lock SyncLock => _syncLock;
-    internal IAutoSaveContext LocalContext
-    {
-        get
-        {
-            return _localContext;
-        }
-    }
-    internal IAutoSaveContext GlobalContext
-    {
-        get
-        {
-            return _globalContext;
-        }
-    }
 
     bool _isFileChanged = false;
     bool _enabled = false;
 
-    IAutoSaveContext _localContext;
-    IAutoSaveContext _globalContext;
     AutoSaveRecoverer _recoverer;
     /// <summary>
     ///     自动保存计时Timer 默认每60秒检查一次
     /// </summary>
-    readonly Timer _autoSaveTimer = new(1000 * 60);
+    readonly Timer _autoSaveTimer = new(1000 * 10);
     readonly List<IAutoSaver> _autoSavers = new();
 
     static volatile AutoSaveManager? _instance;
     static readonly Lock _syncLock = new();
+    static readonly Lock _autoSavesSyncLock = new();
 
     internal static readonly int LOCAL_AUTOSAVE_MAX_COUNT = 5;
     internal static readonly int GLOBAL_AUTOSAVE_MAX_COUNT = 30;
@@ -114,15 +99,17 @@ public sealed class AutoSaveManager
     /// <summary>
     ///     构造函数
     /// </summary>
-    AutoSaveManager(IAutoSaveContext localAutoSaveContext, IAutoSaveContext globalAutoSaveContext)
+    AutoSaveManager(params IList<IAutoSaver> autoSavers)
     {
+        if (autoSavers.Count < 2)
+            throw new ArgumentException("The number of savers must be greater than 2", nameof(autoSavers));
         _instance = this;
-        _localContext = localAutoSaveContext;
-        _globalContext = globalAutoSaveContext;
-        _recoverer = new AutoSaveRecoverer();
+        _recoverer = new AutoSaveRecoverer(autoSavers[0].Context, autoSavers[1].Context);
         // 本地存储者和全局存储者
-        _autoSavers.Add(new LocalAutoSaver());
-        _autoSavers.Add(new GlobalAutoSaver());
+        if(autoSavers is not null)
+        {
+            _autoSavers.AddRange(autoSavers);
+        }
 
         // 存储事件
         _autoSaveTimer.AutoReset = true;
@@ -134,16 +121,16 @@ public sealed class AutoSaveManager
         {
             if (_instance is not null)
                 return;
-            new AutoSaveManager(localAutoSaveContext, globalAutoSaveContext);
+            Initialize(new LocalAutoSaver(localAutoSaveContext), new GlobalAutoSaver(globalAutoSaveContext));
         }
     }
-    public static void Initialize(IAutoSaveContext localAutoSaveContext, IAutoSaveContentProvider<string> contentProvider)
+    public static void Initialize(params IList<IAutoSaver> autoSavers)
     {
         lock (_syncLock)
         {
             if (_instance is not null)
                 return;
-            Initialize(localAutoSaveContext, new GlobalAutoSaveContext(contentProvider));
+            _instance = new AutoSaveManager(autoSavers);
         }
     }
     /// <summary>
@@ -154,15 +141,33 @@ public sealed class AutoSaveManager
     private void autoSaveTimer_Elapsed(object? sender, ElapsedEventArgs e)
     {
         // 若文件未改动，则跳过此次自动保存
-        if (!IsFileChanged) return;
+        if (!IsFileChanged || _autoSavers.Count == 0) 
+            return;
 
         // 执行保存行为
-        foreach (var saver in _autoSavers) 
-            saver.DoAutoSave();
+        lock(_autoSavesSyncLock)
+        {
+            foreach (var saver in _autoSavers)
+                saver.DoAutoSave();
+        }
         Debug.WriteLine("Module: AutoSave executed");
         Task.Run(() => OnAutoSaveExecuted?.Invoke(this));
         // 标记变更已被保存
         _isFileChanged = false;
+    }
+    public void AddSaver<T>(T autoSaver) where T : IAutoSaver
+    {
+        lock(_autoSavesSyncLock)
+        {
+            _autoSavers.Add(autoSaver);
+        }
+    }
+    public void AddRange<T>(T autoSavers) where T : IEnumerable<IAutoSaver>
+    {
+        lock (_autoSavesSyncLock)
+        {
+            _autoSavers.AddRange(autoSavers);
+        }
     }
     [MemberNotNull(nameof(_instance))]
     static void EnsureManagerIsInitialized()

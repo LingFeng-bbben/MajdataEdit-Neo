@@ -24,6 +24,7 @@ using Avalonia.Threading;
 using MajdataEdit_Neo.Modules.AutoSave;
 using MajdataEdit_Neo.Modules.AutoSave.Contexts;
 using System.Runtime.InteropServices;
+using MajdataEdit_Neo.Types;
 
 namespace MajdataEdit_Neo.ViewModels;
 
@@ -213,7 +214,9 @@ public partial class MainWindowViewModel : ViewModelBase
     PlayerConnection _playerConnection = new PlayerConnection();
     SimaiParser _simaiParser = new SimaiParser();
     TrackReader _trackReader = new TrackReader();
-    InternalAutoSaveContext _internalAutoSaveContext = new();
+    InternalAutoSaveContext _internalLocalAutoSaveContext = new();
+    InternalAutoSaveContext _internalGlobalAutoSaveContext = new();
+    InternalAutoSaveContentProvider _internalAutoSaveContentProvider = new();
     AutoSaveManager _autoSaveManager;
     IAutoSaveRecoverer _autoSaveRecoverer;
 
@@ -225,7 +228,9 @@ public partial class MainWindowViewModel : ViewModelBase
         _playerConnection.OnPlayStopped += _playerConnection_OnPlayStopped;
         _playerConnection.OnLoadRequired += _playerConnection_OnLoadRequired;
         _playerConnection.OnLoadFinished += _playerConnection_OnLoadFinished;
-        AutoSaveManager.Initialize(_internalAutoSaveContext,(IAutoSaveContentProvider<string>)_internalAutoSaveContext);
+        _internalLocalAutoSaveContext = new(_internalAutoSaveContentProvider);
+        _internalGlobalAutoSaveContext = new InternalAutoSaveContext(_internalAutoSaveContentProvider);
+        AutoSaveManager.Initialize(_internalLocalAutoSaveContext, _internalGlobalAutoSaveContext);
         _autoSaveManager = AutoSaveManager.Instance;
         _autoSaveRecoverer = _autoSaveManager.Recoverer;
 
@@ -329,8 +334,8 @@ public partial class MainWindowViewModel : ViewModelBase
             SongTrackInfo = _trackReader.ReadTrack(_maidataDir);
             //IsFumenContextChanged = false;
             _autoSaveManager.Enabled = true;
-            _internalAutoSaveContext.WorkingPath = _maidataDir;
-            _internalAutoSaveContext.Content = await File.ReadAllTextAsync(maidataPath);
+            _internalAutoSaveContentProvider.Content = await File.ReadAllTextAsync(maidataPath);
+            UpdateAutoSaveContext();
             //TODO: Reset view if already loaded?
             await EditorLoad();
         }
@@ -408,8 +413,13 @@ public partial class MainWindowViewModel : ViewModelBase
     }
     public async void SaveFile()
     {
-        if (CurrentSimaiFile is null) return;
-        IsSaved = true;
+        if (CurrentSimaiFile is null) 
+            return;
+        lock(_fumenContentChangedSyncLock)
+        {
+            IsFumenContextChanged = false;
+            OriginFumen = CurrentFumen;
+        }
         await _simaiParser.DeParseAsync(CurrentSimaiFile, _maidataDir + "/maidata.txt");
     }
     public void OpenBpmTapWindow()
@@ -634,7 +644,12 @@ public partial class MainWindowViewModel : ViewModelBase
         editor.ScrollTo((int)position.Y + 1, (int)position.X);
         editor.Focus();
     }
-
+    void UpdateAutoSaveContext()
+    {
+        _internalLocalAutoSaveContext.RawFilePath = Path.Combine(_maidataDir, "maidata.txt");
+        _internalLocalAutoSaveContext.WorkingPath = Path.Combine(_maidataDir, ".autosave");
+        _internalGlobalAutoSaveContext.RawFilePath = Path.Combine(_maidataDir, "maidata.txt");
+    }
     private async void MainWindowViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
         //Debug.WriteLine(e.PropertyName);
@@ -664,7 +679,7 @@ public partial class MainWindowViewModel : ViewModelBase
                 if (CurrentSimaiFile is null)
                     return;
                 var maidata = await SimaiParser.Shared.DeParseAsStringAsync(CurrentSimaiFile);
-                _internalAutoSaveContext.Content = maidata;
+                _internalAutoSaveContentProvider.Content = maidata;
             }
             catch (Exception ex)
             {
@@ -684,6 +699,7 @@ public partial class MainWindowViewModel : ViewModelBase
         try
         {
             IsFumenContextChanged = false;
+            OriginFumen = CurrentFumen;
         }
         finally
         {
@@ -727,7 +743,22 @@ public partial class MainWindowViewModel : ViewModelBase
     class InternalAutoSaveContext : IAutoSaveContext, IAutoSaveContentProvider<string>
     {
         public string WorkingPath { get; set; } = Path.Combine(Environment.CurrentDirectory, ".autosave");
+        public string RawFilePath { get; set; } = string.Empty;
+        public string Content => _contentProvider?.Content ?? string.Empty;
+
+        IAutoSaveContentProvider<string>? _contentProvider;
+
+        public InternalAutoSaveContext(IAutoSaveContentProvider<string>? contentProvider)
+        {
+            _contentProvider = contentProvider;
+        }
+        public InternalAutoSaveContext()
+        {
+
+        }
+    }
+    class InternalAutoSaveContentProvider: IAutoSaveContentProvider<string>
+    {
         public string Content { get; set; } = string.Empty;
     }
-
 }

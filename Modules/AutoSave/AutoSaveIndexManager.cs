@@ -3,6 +3,7 @@
   See LICENSE in the project root for license information.
 */
 
+using MajdataEdit_Neo.Modules.AutoSave.Contexts;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -11,65 +12,68 @@ using System.Text.Json;
 namespace MajdataEdit_Neo.Modules.AutoSave;
 internal class AutoSaveIndexManager : IAutoSaveIndexManager
 {
-    private string? curPath;
-    private AutoSaveIndex? index;
-    private bool isReady;
-    private int maxAutoSaveCount;
+    string? _curPath;
+    AutoSaveIndex? _index;
+    bool _isReady;
+    int _maxAutoSaveCount;
 
-    public AutoSaveIndexManager()
+    readonly IAutoSaveContext _context;
+
+    public AutoSaveIndexManager(IAutoSaveContext context)
     {
-        maxAutoSaveCount = 5;
+        _maxAutoSaveCount = 5;
+        _context = context;
     }
 
-    public AutoSaveIndexManager(int maxAutoSaveCount)
+    public AutoSaveIndexManager(IAutoSaveContext context, int maxAutoSaveCount) : this(context)
     {
-        this.maxAutoSaveCount = maxAutoSaveCount;
+        this._maxAutoSaveCount = maxAutoSaveCount;
     }
 
     public void ChangePath(string path)
     {
-        if (path != curPath)
+        if (path != _curPath)
         {
             // 只有当新目录和之前设置的目录不同时，才会触发index文件读写
-            curPath = path;
+            _curPath = path;
             LoadOrCreateIndexFile();
         }
 
-        isReady = true;
+        _isReady = true;
     }
 
     public int GetFileCount()
     {
         if (!IsReady()) throw new AutoSaveIndexNotReadyException("AutoSaveIndexManager is not ready yet.");
 
-        return index!.Count;
+        return _index!.Count;
     }
 
     public List<AutoSaveFileInfo> GetFileInfos()
     {
         if (!IsReady()) throw new AutoSaveIndexNotReadyException("AutoSaveIndexManager is not ready yet.");
 
-        return index!.FilesInfo;
+        return _index!.FilesInfo;
     }
 
     public int GetMaxAutoSaveCount()
     {
-        return maxAutoSaveCount;
+        return _maxAutoSaveCount;
     }
 
     public string GetNewAutoSaveFileName()
     {
-        var path = curPath + "/autosave." + GetCurrentTimeString() + ".txt";
+        var path = _curPath + "/autosave." + GetCurrentTimeString() + ".txt";
 
         var fileInfo = new AutoSaveFileInfo
         {
             FileName = path,
             SavedTime = DateTimeOffset.Now.AddHours(8).ToUnixTimeSeconds(),
-            RawPath =  string.Empty//MainWindow.maidataDir
+            RawPath = _context.RawFilePath
         };
-        index!.FilesInfo.Add(fileInfo);
+        _index!.FilesInfo.Add(fileInfo);
 
-        index.Count++;
+        _index.Count++;
 
         // 将变更存储到index文件中
         UpdateIndexFile();
@@ -79,29 +83,29 @@ internal class AutoSaveIndexManager : IAutoSaveIndexManager
 
     public bool IsReady()
     {
-        return isReady;
+        return _isReady;
     }
 
     public void RefreshIndex()
     {
         // 先扫描一遍，如果有文件已经被删了就先移除掉
-        for (var i = index!.Count - 1; i >= 0; i--)
+        for (var i = _index!.Count - 1; i >= 0; i--)
         {
-            var fileInfo = index.FilesInfo[i];
+            var fileInfo = _index.FilesInfo[i];
             if (!File.Exists(fileInfo.FileName))
             {
-                index.FilesInfo.RemoveAt(i);
-                index.Count--;
+                _index.FilesInfo.RemoveAt(i);
+                _index.Count--;
             }
         }
 
         // 然后从this.index.FileInfo的表头开始删除 直到保证自动保存文件的数量符合maxAutoSaveCount的要求
-        while (index.Count > maxAutoSaveCount)
+        while (_index.Count > _maxAutoSaveCount)
         {
-            var fileInfo = index.FilesInfo[0];
+            var fileInfo = _index.FilesInfo[0];
             File.Delete(fileInfo.FileName!);
-            index.FilesInfo.RemoveAt(0);
-            index.Count--;
+            _index.FilesInfo.RemoveAt(0);
+            _index.Count--;
         }
 
         // 将变更存储到index文件中
@@ -110,20 +114,20 @@ internal class AutoSaveIndexManager : IAutoSaveIndexManager
 
     public void SetMaxAutoSaveCount(int maxAutoSaveCount)
     {
-        this.maxAutoSaveCount = maxAutoSaveCount;
+        this._maxAutoSaveCount = maxAutoSaveCount;
         Console.WriteLine("maxAutoSaveCount:" + maxAutoSaveCount);
     }
 
 
     private void LoadOrCreateIndexFile()
     {
-        CreateDirectoryIfNotExists(curPath!);
-        KeepDirectoryHidden(curPath!);
+        CreateDirectoryIfNotExists(_curPath!);
+        KeepDirectoryHidden(_curPath!);
 
-        var indexFilePath = curPath + "/.index.json";
+        var indexFilePath = _curPath + "/.index.json";
         if (!File.Exists(indexFilePath))
         {
-            index = new AutoSaveIndex();
+            _index = new AutoSaveIndex();
             UpdateIndexFile();
         }
         else
@@ -159,10 +163,10 @@ internal class AutoSaveIndexManager : IAutoSaveIndexManager
     /// </summary>
     private void UpdateIndexFile()
     {
-        var indexPath = curPath + "/.index.json";
+        var indexPath = _curPath + "/.index.json";
 
         //var jsonText = JsonConvert.SerializeObject(index);
-        var jsonText = JsonSerializer.Serialize(index);
+        var jsonText = JsonSerializer.Serialize(_index);
         File.WriteAllText(indexPath, jsonText);
     }
 
@@ -171,11 +175,11 @@ internal class AutoSaveIndexManager : IAutoSaveIndexManager
     /// </summary>
     private void LoadIndexFromFile()
     {
-        var indexPath = curPath + "/.index.json";
+        var indexPath = _curPath + "/.index.json";
 
         var jsonText = File.ReadAllText(indexPath);
         //index = JsonConvert.DeserializeObject<AutoSaveIndex>(jsonText);
-        index = JsonSerializer.Deserialize<AutoSaveIndex>(jsonText);
+        _index = JsonSerializer.Deserialize<AutoSaveIndex>(jsonText);
     }
 
     /// <summary>

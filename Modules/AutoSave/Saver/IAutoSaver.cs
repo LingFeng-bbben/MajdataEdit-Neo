@@ -3,13 +3,16 @@
   See LICENSE in the project root for license information.
 */
 
+using MajdataEdit_Neo.Modules.AutoSave.Contexts;
+
 namespace MajdataEdit_Neo.Modules.AutoSave.Saver;
 /// <summary>
 ///     自动保存行为接口
 ///     职责仅为进行自动保存行为
 /// </summary>
-internal interface IAutoSaver
+public interface IAutoSaver
 {
+    IAutoSaveContext Context { get; }
     /// <summary>
     ///     执行自动保存行为
     /// </summary>

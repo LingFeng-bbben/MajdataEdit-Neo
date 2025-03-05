@@ -15,5 +15,9 @@ public interface IAutoSaveContext
     /// </summary>
     /// <returns></returns>
     string WorkingPath { get; }
+    /// <summary>
+    /// Maidata path
+    /// </summary>
+    string RawFilePath { get; }
     string Content { get; }
 }

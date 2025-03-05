@@ -25,8 +25,9 @@ internal class PlayerConnection : IDisposable
     public ViewSummary ViewSummary => _viewSummary;
     private ViewSummary _viewSummary;
 
-    public delegate void NotifyPlayStartedEventHandler(object sender, MajWsResponseType e);
-    public event NotifyPlayStartedEventHandler? OnPlayStarted;
+    public delegate void NotifyViewStateChangedEventHandler(object sender, MajWsResponseType e);
+    public event NotifyViewStateChangedEventHandler? OnPlayStarted;
+    public event NotifyViewStateChangedEventHandler? OnPlayStopped;
 
     bool _lastState = false;
     Task _listenerTask = Task.CompletedTask;
@@ -152,10 +153,6 @@ internal class PlayerConnection : IDisposable
     }
     public async Task StopAsync()
     {
-        _viewSummary = new ViewSummary()
-        {
-            State = ViewStatus.Loaded,//hack
-        };
         var req = new MajWsRequestBase()
         {
             requestType = MajWsRequestType.Stop,
@@ -208,22 +205,26 @@ internal class PlayerConnection : IDisposable
             {
                 while(_playerMessages.TryDequeue(out var args))
                 {
+                    Debug.WriteLine(args.Data);
                     var resp = JsonSerializer.Deserialize<MajWsResponseBase>(args.Data, JSON_READER_OPTIONS);
                     switch (resp.responseType)
                     {
+                        case MajWsResponseType.PlayPaused:
                         case MajWsResponseType.Heartbeat:
-                            var status = JsonSerializer.Deserialize<ViewSummary>(resp.responseData?.ToString() ?? string.Empty, JSON_READER_OPTIONS);
-                            _viewSummary = status;
+                        case MajWsResponseType.Ok:
+                            _viewSummary = JsonSerializer.Deserialize<ViewSummary>(resp.responseData?.ToString() ?? string.Empty, JSON_READER_OPTIONS);
                             break;
                         case MajWsResponseType.PlayResumed:
                         case MajWsResponseType.PlayStarted:
-                            _viewSummary = new ViewSummary()
-                            {
-                                State = ViewStatus.Playing,//hack
-                            };
+                            _viewSummary = JsonSerializer.Deserialize<ViewSummary>(resp.responseData?.ToString() ?? string.Empty, JSON_READER_OPTIONS);
                             OnPlayStarted?.Invoke(this, resp.responseType);
                             break;
+                        case MajWsResponseType.PlayStopped:
+                            _viewSummary = JsonSerializer.Deserialize<ViewSummary>(resp.responseData?.ToString() ?? string.Empty, JSON_READER_OPTIONS);
+                            OnPlayStopped?.Invoke(this, resp.responseType);
+                            break;
                         case MajWsResponseType.Error:
+                            //TODO: Move this to View model through event
                             await Dispatcher.UIThread.Invoke(async () => {
                                 await MessageBox.ShowAsync(resp.responseData.ToString() ?? "Unknown Error", "Error", icon: Icon.Error);
                             });

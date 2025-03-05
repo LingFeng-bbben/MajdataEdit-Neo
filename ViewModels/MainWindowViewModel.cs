@@ -197,6 +197,7 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         PropertyChanged += MainWindowViewModel_PropertyChanged;
         _playerConnection.OnPlayStarted += _playerConnection_OnPlayStarted;
+        _playerConnection.OnPlayStopped += _playerConnection_OnPlayStopped;
         AutoSaveManager.Initialize(_internalAutoSaveContext,(IAutoSaveContentProvider<string>)_internalAutoSaveContext);
         _autoSaveManager = AutoSaveManager.Instance;
         _autoSaveRecoverer = _autoSaveManager.Recoverer;
@@ -240,7 +241,7 @@ public partial class MainWindowViewModel : ViewModelBase
         if (nearestNote is null) return new Point();
         return new Point(nearestNote.RawTextPositionX, nearestNote.RawTextPositionY);
     }
-    public void SetCaretTime(Point rawPostion, bool setTrackTime)
+    public async void SetCaretTime(Point rawPostion, bool setTrackTime)
     {
         if (CurrentSimaiChart is null) return;
         var nearestNote = CurrentSimaiChart.CommaTimings.MinBy(o => Math.Abs(Math.Clamp(o.RawTextPositionX - rawPostion.X ,int.MinValue,0)) + 9999*Math.Abs(o.RawTextPositionY - rawPostion.Y+1));
@@ -249,7 +250,7 @@ public partial class MainWindowViewModel : ViewModelBase
         if (setTrackTime) {
             //By pass Ctrl+Click if it's playing
             if (_playerConnection.ViewSummary.State == ViewStatus.Playing) return;
-            Stop(false);
+            await Stop(false);
             TrackTime = CaretTime + Offset;
         }
     }
@@ -474,8 +475,8 @@ public partial class MainWindowViewModel : ViewModelBase
             switch (_playerConnection.ViewSummary.State)
             {
                 case ViewStatus.Playing:
+                    _isBackToStartOnPlayStop = true;
                     await _playerConnection.StopAsync();
-                    TrackTime = playStartTime;
                     return;
                 case ViewStatus.Paused:
                     await _playerConnection.ResumeAsync();
@@ -503,7 +504,8 @@ public partial class MainWindowViewModel : ViewModelBase
             watch.Start();
             var timeA = watch.Elapsed;
             IsAnimated = false;
-            while (_playerConnection.ViewSummary.State == ViewStatus.Playing)
+            while (_playerConnection.ViewSummary.State == ViewStatus.Playing && 
+                    _playerConnection.IsConnected)
             {
                 TrackTime = watch.ElapsedMilliseconds / 1000d + playStartTime;
                 if (IsFollowCursor)
@@ -521,15 +523,14 @@ public partial class MainWindowViewModel : ViewModelBase
                 var timeB = watch.Elapsed;
                 var waitTime = Math.Max(16 - (int)(timeB - timeA).TotalMilliseconds, 0);
                 await Task.Delay(waitTime);
-                if (!_playerConnection.IsConnected)
-                    break;
             }
             IsAnimated = true;
         });
     }
-
+    private bool _isBackToStartOnPlayStop = false;
     public async void Stop(bool isBackToStart = true)
     {
+        _isBackToStartOnPlayStop = isBackToStart;
         try
         {
             IsPlayControlEnabled = false;
@@ -554,14 +555,20 @@ public partial class MainWindowViewModel : ViewModelBase
                     return;
             }
             await _playerConnection.StopAsync();
-            if (isBackToStart)
-                TrackTime = playStartTime;
+            
         }
         finally
         {
             IsPlayControlEnabled = true;
         }
         
+    }
+
+    private void _playerConnection_OnPlayStopped(object sender, MajWsResponseType e)
+    {
+        if (_isBackToStartOnPlayStop)
+            TrackTime = playStartTime;
+        IsPlayControlEnabled = true;
     }
     async Task<bool> EnsureConnectedToPlayerAsync(bool showMessageBox = false)
     {

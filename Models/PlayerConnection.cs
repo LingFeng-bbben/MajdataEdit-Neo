@@ -211,7 +211,7 @@ internal class PlayerConnection : IDisposable
             {
                 while(_playerMessages.TryDequeue(out var args))
                 {
-                    Debug.WriteLine(args.Data);
+                    //Debug.WriteLine(args.Data);
                     var resp = JsonSerializer.Deserialize<MajWsResponseBase>(args.Data, JSON_READER_OPTIONS);
                     switch (resp.responseType)
                     {
@@ -240,7 +240,7 @@ internal class PlayerConnection : IDisposable
                             });
                             break;
                         default:
-                            Debug.WriteLine(args.Data);
+                            //Debug.WriteLine(args.Data);
                             break;
                     }
                 }

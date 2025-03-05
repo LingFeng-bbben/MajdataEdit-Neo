@@ -6,6 +6,7 @@
 using MajdataEdit_Neo.Modules.AutoSave.Contexts;
 using MajdataEdit_Neo.Modules.AutoSave.Saver;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Timers;
 using Timer = System.Timers.Timer;
@@ -18,6 +19,11 @@ namespace MajdataEdit_Neo.Modules.AutoSave;
 /// </summary>
 public sealed class AutoSaveManager
 {
+    public delegate void AutoSaveExecutedEventHandler(object? sender);
+    /// <summary>
+    /// Called when autosaving, this event uses threads
+    /// </summary>
+    public event AutoSaveExecutedEventHandler? OnAutoSaveExecuted;
     /// <summary>
     /// 指示是否启用AutoSave功能
     /// </summary>
@@ -151,8 +157,10 @@ public sealed class AutoSaveManager
         if (!IsFileChanged) return;
 
         // 执行保存行为
-        foreach (var saver in _autoSavers) saver.DoAutoSave();
-
+        foreach (var saver in _autoSavers) 
+            saver.DoAutoSave();
+        Debug.WriteLine("Module: AutoSave executed");
+        Task.Run(() => OnAutoSaveExecuted?.Invoke(this));
         // 标记变更已被保存
         _isFileChanged = false;
     }

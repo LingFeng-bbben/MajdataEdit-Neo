@@ -144,6 +144,14 @@ public partial class MainWindowViewModel : ViewModelBase
         }
     }
 
+    public bool IsConnected
+    {
+        get
+        {
+            return _playerConnection.IsConnected;
+        }
+    }
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(FumenContent))]
     [NotifyPropertyChangedFor(nameof(Level))]
@@ -200,6 +208,7 @@ public partial class MainWindowViewModel : ViewModelBase
         _playerConnection.OnPlayStopped += _playerConnection_OnPlayStopped;
         _playerConnection.OnLoadRequired += _playerConnection_OnLoadRequired;
         _playerConnection.OnLoadFinished += _playerConnection_OnLoadFinished;
+        _playerConnection.OnDisconnected += _playerConnection_OnDisconnected;
         AutoSaveManager.Initialize(_internalAutoSaveContext,(IAutoSaveContentProvider<string>)_internalAutoSaveContext);
         _autoSaveManager = AutoSaveManager.Instance;
         _autoSaveRecoverer = _autoSaveManager.Recoverer;
@@ -209,9 +218,10 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         if (!await _playerConnection.ConnectAsync())
         {
-            await MessageBox.ShowWindowDialogAsync("Cannot connect to player", "Warning", ButtonEnum.Ok, Icon.Warning);
+            OnPropertyChanged(nameof(IsConnected));
             return false;
         }
+        OnPropertyChanged(nameof(IsConnected));
         return true;
     }
     public void SlideZoomLevel(float delta)
@@ -581,24 +591,26 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         await EditorLoad();
     }
+    private void _playerConnection_OnDisconnected(object? sender, EventArgs e)
+    {
+        OnPropertyChanged(nameof(IsConnected));
+    }
+
     async Task<bool> CheckPlayerConnectionAndReconnect(bool showMessageBox = false)
     {
         //TODO: 改成弱提示，比如状态指示灯
+        
         if (!_playerConnection.IsConnected)
         {
             if (!await _playerConnection.ConnectAsync())
             {
-                if(showMessageBox)
-                {
-                    await MessageBox.ShowWindowDialogAsync("Cannot connect to player", "Warning", ButtonEnum.Ok, Icon.Warning);
-                }
-
+                OnPropertyChanged(nameof(IsConnected));
                 return false;
             }
-            if(showMessageBox)
-                await MessageBox.ShowWindowDialogAsync("Player Reconnected", "Info", ButtonEnum.Ok, Icon.Info);
+            OnPropertyChanged(nameof(IsConnected));
             return false;
         }
+        OnPropertyChanged(nameof(IsConnected));
         return true;
     }
     public void SeekToDocPos(Point position, TextEditor editor)

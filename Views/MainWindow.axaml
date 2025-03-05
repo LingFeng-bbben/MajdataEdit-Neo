@@ -123,6 +123,7 @@
         <NumericUpDown  Name="First" Value="{Binding Offset}" Increment="0.01"/>
         <CheckBox Grid.Row="8" Grid.Column="1" Grid.ColumnSpan="2" Margin="0 10 0 0"
                   IsChecked="{Binding IsFollowCursor}">Follow Cursor</CheckBox>
+        <CheckBox IsChecked="{Binding IsConnected}" IsEnabled="False">Connection</CheckBox>
       </StackPanel>
 
 

@@ -31,6 +31,7 @@ internal class PlayerConnection : IDisposable
     
     public event EventHandler? OnLoadRequired;
     public event EventHandler? OnLoadFinished;
+    public event EventHandler? OnDisconnected;
 
     bool _lastState = false;
     Task _listenerTask = Task.CompletedTask;
@@ -89,10 +90,7 @@ internal class PlayerConnection : IDisposable
     {
         if (!_lastState)
             return;
-        Dispatcher.UIThread.Invoke(async () =>
-        {
-            await MessageBox.ShowAsync("Player disconnected", "Warning", icon: Icon.Warning);
-        });
+        OnDisconnected?.Invoke(this, new EventArgs());
         _lastState = false;
     }
     void OnMessage(object? sender, MessageEventArgs args)

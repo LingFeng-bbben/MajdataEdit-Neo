@@ -86,7 +86,7 @@ public sealed class AutoSaveManager
     /// <summary>
     ///     自动保存计时Timer 默认每60秒检查一次
     /// </summary>
-    readonly Timer _autoSaveTimer = new(1000 * 10);
+    readonly Timer _autoSaveTimer = new(1000 * 60);
     readonly List<IAutoSaver> _autoSavers = new();
 
     static volatile AutoSaveManager? _instance;

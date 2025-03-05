@@ -250,7 +250,7 @@ public partial class MainWindowViewModel : ViewModelBase
         if (setTrackTime) {
             //By pass Ctrl+Click if it's playing
             if (_playerConnection.ViewSummary.State == ViewStatus.Playing) return;
-            await Stop(false);
+            Stop(false);
             TrackTime = CaretTime + Offset;
         }
     }

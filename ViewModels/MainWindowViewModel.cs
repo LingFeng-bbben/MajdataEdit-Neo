@@ -261,33 +261,21 @@ public partial class MainWindowViewModel : ViewModelBase
         //theLine = theLine.OrderBy(o => o.RawTextPositionX).ToArray();
         if (timings.Length >= 2)
         {
-            var foundone = false;
             for (int i = 0; i + 1 < timings.Length; i++)
             {
                 var note = timings[i];
                 var nextnote = timings[i + 1];
-                if(rawPostion <= note.HSpeed)
+                if(rawPostion <= note.RawTextPosition)
                 {
                     nearestNote = note;
-                    foundone = true;
                     break;
                 }
-                if (note.HSpeed < rawPostion && rawPostion <= nextnote.HSpeed)
+                if (note.RawTextPosition < rawPostion && rawPostion <= nextnote.RawTextPosition)
                 {
                     nearestNote = nextnote;
-                    foundone = true;
                     break;
                 }
             }
-/*            if (!foundone)
-            {
-                //lets go to the next one
-                var last = timings.LastOrDefault();
-                if (last is null) return;
-                var indexoflast = CurrentSimaiChart.CommaTimings.ToList().IndexOf(last);
-                if (indexoflast + 1 >= CurrentSimaiChart.CommaTimings.Length) return;
-                nearestNote = CurrentSimaiChart.CommaTimings[indexoflast + 1];
-            }*/
         }
         if (nearestNote is null) return;
         CaretTime = nearestNote.Timing;

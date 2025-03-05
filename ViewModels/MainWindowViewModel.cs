@@ -83,15 +83,15 @@ public partial class MainWindowViewModel : ViewModelBase
         get
         {
             if (CurrentSimaiFile is null || CurrentSimaiFile.Charts[SelectedDifficulty] is null) return "";
-            _level[selectedDifficulty] = CurrentSimaiFile.Charts[SelectedDifficulty].Level;
-            return _level[selectedDifficulty];
+            _level[SelectedDifficulty] = CurrentSimaiFile.Charts[SelectedDifficulty].Level;
+            return _level[SelectedDifficulty];
         }
         set
         {
             if (CurrentSimaiFile is null || CurrentSimaiFile.Charts[SelectedDifficulty] is null) return;
             CurrentSimaiFile.Charts[SelectedDifficulty].Level = value;
             Debug.WriteLine(SelectedDifficulty);
-            SetProperty(ref _level[selectedDifficulty], value);
+            SetProperty(ref _level[SelectedDifficulty], value);
             OnPropertyChanged(nameof(CurrentSimaiFile));
         }
     }
@@ -253,45 +253,45 @@ public partial class MainWindowViewModel : ViewModelBase
         if (nearestNote is null) return new Point();
         return new Point(nearestNote.RawTextPositionX, nearestNote.RawTextPositionY);
     }
-    public async void SetCaretTime(Point rawPostion, bool setTrackTime)
+    public async void SetCaretTime(int rawPostion, bool setTrackTime)
     {
         if (CurrentSimaiChart is null) return;
-        var theLine = CurrentSimaiChart.CommaTimings.Where(o => o.RawTextPositionY == rawPostion.Y-1).ToArray();
-        var nearestNote = theLine.FirstOrDefault();
+        var timings = CurrentSimaiChart.CommaTimings.ToArray();
+        var nearestNote = timings.FirstOrDefault();
         //theLine = theLine.OrderBy(o => o.RawTextPositionX).ToArray();
-        if (theLine.Length >= 2)
+        if (timings.Length >= 2)
         {
             var foundone = false;
-            for (int i = 0; i + 1 < theLine.Length; i++)
+            for (int i = 0; i + 1 < timings.Length; i++)
             {
-                var note = theLine[i];
-                var nextnote = theLine[i + 1];
-                if(rawPostion.X <= note.RawTextPositionX)
+                var note = timings[i];
+                var nextnote = timings[i + 1];
+                if(rawPostion <= note.HSpeed)
                 {
                     nearestNote = note;
                     foundone = true;
                     break;
                 }
-                if (note.RawTextPositionX < rawPostion.X && rawPostion.X <= nextnote.RawTextPositionX)
+                if (note.HSpeed < rawPostion && rawPostion <= nextnote.HSpeed)
                 {
                     nearestNote = nextnote;
                     foundone = true;
                     break;
                 }
             }
-            if (!foundone)
+/*            if (!foundone)
             {
                 //lets go to the next one
-                var last = theLine.LastOrDefault();
+                var last = timings.LastOrDefault();
                 if (last is null) return;
                 var indexoflast = CurrentSimaiChart.CommaTimings.ToList().IndexOf(last);
                 if (indexoflast + 1 >= CurrentSimaiChart.CommaTimings.Length) return;
                 nearestNote = CurrentSimaiChart.CommaTimings[indexoflast + 1];
-            }
+            }*/
         }
         if (nearestNote is null) return;
         CaretTime = nearestNote.Timing;
-        if (IsFollowCursor||se) {
+        if (IsFollowCursor|| setTrackTime) {
             //By pass Ctrl+Click if it's playing
             if (_playerConnection.ViewSummary.State == ViewStatus.Playing) return;
             Stop(false);

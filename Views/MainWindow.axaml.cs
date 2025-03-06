@@ -35,7 +35,7 @@ public partial class MainWindow : Window
         var _registryOptions = new RegistryOptions(ThemeName.DarkPlus);
         var _install = TextMate.InstallTextMate(textEditor, _registryOptions);
         var registry = new Registry(_install.RegistryOptions);
-        _install.SetGrammarFile("simai.tmLanguage.json");
+        _install.SetGrammarFile(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "simai.tmLanguage.json"));
         //setup visualizer
         simaiVisual = this.FindControl<SimaiVisualizerControl>("SimaiVisual");
         simaiVisual.PointerWheelChanged += SimaiVisual_PointerWheelChanged;
@@ -147,5 +147,5 @@ public partial class MainWindow : Window
         }
     }
 
-    
+
 }

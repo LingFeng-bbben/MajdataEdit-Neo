@@ -15,10 +15,10 @@ internal class AutoSaveIndex
     /// <summary>
     ///     已存在的自动保存文件数量
     /// </summary>
-    public int Count = 0;
+    public int Count { get; set; } = 0;
 
     /// <summary>
     ///     自动保存文件列表
     /// </summary>
-    public List<AutoSaveFileInfo> FilesInfo = new();
+    public List<AutoSaveFileInfo> FilesInfo { get; set; } = new();
 }

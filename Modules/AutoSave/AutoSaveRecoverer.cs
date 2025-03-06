@@ -15,15 +15,12 @@ internal class AutoSaveRecoverer : IAutoSaveRecoverer
     readonly IAutoSaveContext _localContext;
     readonly IAutoSaveIndexManager _localIndex;
 
-    readonly AutoSaveManager _manager;
-
     readonly static IReadOnlyCollection<AutoSaveFileInfo> EMPTY_COLLECTION = new List<AutoSaveFileInfo>(0);
-    public AutoSaveRecoverer()
+    public AutoSaveRecoverer(IAutoSaveContext localContext,IAutoSaveContext globalContext)
     {
-        _manager = AutoSaveManager.Instance;
-        _localContext = _manager.LocalContext;
-        _globalContext = _manager.GlobalContext;
-        _localIndex = new AutoSaveIndexManager(AutoSaveManager.LOCAL_AUTOSAVE_MAX_COUNT);
+        _localContext = localContext;
+        _globalContext = globalContext;
+        _localIndex = new AutoSaveIndexManager(localContext,AutoSaveManager.LOCAL_AUTOSAVE_MAX_COUNT);
         try
         {
             _localIndex.ChangePath(_localContext.WorkingPath);
@@ -32,7 +29,7 @@ internal class AutoSaveRecoverer : IAutoSaveRecoverer
         {
         }
 
-        _globalIndex = new AutoSaveIndexManager(AutoSaveManager.GLOBAL_AUTOSAVE_MAX_COUNT);
+        _globalIndex = new AutoSaveIndexManager(globalContext,AutoSaveManager.GLOBAL_AUTOSAVE_MAX_COUNT);
         _globalIndex.ChangePath(_globalContext.WorkingPath);
     }
 

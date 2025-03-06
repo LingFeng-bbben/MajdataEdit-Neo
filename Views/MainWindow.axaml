@@ -137,7 +137,7 @@
       </Button>
 
       <AvaloniaEdit:TextEditor Grid.Column="3" Grid.Row="1" Grid.RowSpan="3"
-                               Document="{Binding FumenContent}"
+                               Document="{Binding FumenDocument}"
                                Name="Editor" BorderBrush="#50FFFFFF" BorderThickness="0.5"
                                ShowLineNumbers="True" Margin="5 5 5 5" Padding="5" WordWrap="False"
                                FontFamily="Cascadia Code,Consolas,Menlo,Monospace"

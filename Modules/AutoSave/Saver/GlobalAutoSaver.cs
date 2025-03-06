@@ -13,13 +13,13 @@ namespace MajdataEdit_Neo.Modules.AutoSave.Saver;
 /// </summary>
 internal class GlobalAutoSaver : IAutoSaver
 {
-    readonly IAutoSaveIndexManager _indexManager = new AutoSaveIndexManager();
+    public IAutoSaveContext Context => _saveContext;
+    readonly IAutoSaveIndexManager _indexManager;
     readonly IAutoSaveContext _saveContext;
-    readonly AutoSaveManager _manager;
-    public GlobalAutoSaver()
+    public GlobalAutoSaver(IAutoSaveContext saveContext)
     {
-        _manager = AutoSaveManager.Instance;
-        _saveContext = _manager.GlobalContext;
+        _saveContext = saveContext;
+        _indexManager = new AutoSaveIndexManager(saveContext);
         _indexManager.ChangePath(_saveContext.WorkingPath);
         _indexManager.SetMaxAutoSaveCount(AutoSaveManager.GLOBAL_AUTOSAVE_MAX_COUNT);
     }
@@ -29,7 +29,7 @@ internal class GlobalAutoSaver : IAutoSaver
     {
         var newSaveFilePath = _indexManager.GetNewAutoSaveFileName();
 
-        //SimaiProcess.SaveData(newSaveFilePath);
+        File.WriteAllText(newSaveFilePath, _saveContext.Content);
 
         _indexManager.RefreshIndex();
 

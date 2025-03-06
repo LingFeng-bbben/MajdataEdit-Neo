@@ -13,15 +13,16 @@ namespace MajdataEdit_Neo.Modules.AutoSave.Saver;
 /// </summary>
 internal class LocalAutoSaver : IAutoSaver
 {
-    readonly IAutoSaveIndexManager _indexManager = new AutoSaveIndexManager();
-    readonly IAutoSaveContext _saveContext;
-    readonly AutoSaveManager _manager;
+    public IAutoSaveContext Context => _saveContext;
 
-    public LocalAutoSaver()
+    readonly IAutoSaveIndexManager _indexManager;
+    readonly IAutoSaveContext _saveContext;
+
+    public LocalAutoSaver(IAutoSaveContext saveContext)
     {
+        _saveContext = saveContext;
+        _indexManager = new AutoSaveIndexManager(saveContext);
         _indexManager.SetMaxAutoSaveCount(AutoSaveManager.LOCAL_AUTOSAVE_MAX_COUNT);
-        _manager = AutoSaveManager.Instance;
-        _saveContext = _manager.LocalContext;
     }
 
 
@@ -32,9 +33,7 @@ internal class LocalAutoSaver : IAutoSaver
 
         var newSaveFilePath = _indexManager.GetNewAutoSaveFileName();
 
-        // TODO: FumenContentProvider
-
-        //SimaiProcess.SaveData(newSaveFilePath);
+        File.WriteAllText(newSaveFilePath, _saveContext.Content);
 
         _indexManager.RefreshIndex();
 

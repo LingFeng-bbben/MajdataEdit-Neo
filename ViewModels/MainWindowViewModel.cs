@@ -24,6 +24,7 @@ using Avalonia.Threading;
 using MajdataEdit_Neo.Modules.AutoSave;
 using MajdataEdit_Neo.Modules.AutoSave.Contexts;
 using System.Runtime.InteropServices;
+using MajdataEdit_Neo.Types;
 
 namespace MajdataEdit_Neo.ViewModels;
 
@@ -77,6 +78,11 @@ public partial class MainWindowViewModel : ViewModelBase
             _autoSaveManager.IsFileChanged = !IsSaved;
             return _autoSaveManager.IsFileChanged;
         }
+        set
+        {
+            IsSaved = !value;
+            _autoSaveManager.IsFileChanged = value;
+        }
     }
     public string Level
     {
@@ -114,17 +120,30 @@ public partial class MainWindowViewModel : ViewModelBase
             OnPropertyChanged(nameof(CurrentSimaiFile));
         }
     }
-    public TextDocument FumenContent
+    public TextDocument FumenDocument
     {
         get
         {
             if (CurrentSimaiFile is null) return new TextDocument();
             var text = CurrentSimaiFile.RawCharts[SelectedDifficulty];
             if (text is null) return new TextDocument();
-            return new TextDocument(CurrentSimaiFile.RawCharts[SelectedDifficulty] as string);
+            ref var fumenContent = ref CurrentSimaiFile.RawCharts[SelectedDifficulty];
+            OriginFumen = fumenContent;
+            return new TextDocument(fumenContent);
         }
         //setter not working here, so using the event instead
     }
+    public string CurrentFumen 
+    {
+        get
+        {
+            if (CurrentSimaiFile is null)
+                return string.Empty;
+
+            return CurrentSimaiFile.RawCharts[SelectedDifficulty];
+        }
+    }
+    public string OriginFumen { get; set; } = string.Empty;
 
     public async Task SetFumenContent(string content)
     {
@@ -153,12 +172,12 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(FumenContent))]
+    [NotifyPropertyChangedFor(nameof(FumenDocument))]
     [NotifyPropertyChangedFor(nameof(Level))]
     [NotifyPropertyChangedFor(nameof(Designer))]
     int selectedDifficulty = 0;
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(FumenContent))]
+    [NotifyPropertyChangedFor(nameof(FumenDocument))]
     [NotifyPropertyChangedFor(nameof(Level))]
     [NotifyPropertyChangedFor(nameof(Designer))]
     [NotifyPropertyChangedFor(nameof(Offset))]
@@ -171,7 +190,6 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     float trackZoomLevel = 4f;
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsFumenContextChanged))]
     [NotifyPropertyChangedFor(nameof(WindowTitle))]
     bool isSaved = true;
     [ObservableProperty]
@@ -186,17 +204,27 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     private bool isAnimated = true;
 
-    string _maidataDir = "";
+    bool _isBackToStartOnPlayStop = false;
+    bool _isUpdatingAutoSaveContext = false;
+    
     float _offset = 0;
+    double playStartTime = 0d;
+    DateTime _lastUpdateAutoSaveContextTime = DateTime.UnixEpoch;
+
+    string _maidataDir = "";
+
     readonly string[] _level = new string[7];
     readonly Lock _syncLock = new();
-    bool _isUpdatingAutoSaveContext = false;
-    DateTime _lastUpdateAutoSaveContextTime = DateTime.UnixEpoch;
+    readonly Lock _fumenContentChangedSyncLock = new();
+
+    TextEditor _textEditor;
 
     PlayerConnection _playerConnection = new PlayerConnection();
     SimaiParser _simaiParser = new SimaiParser();
     TrackReader _trackReader = new TrackReader();
-    InternalAutoSaveContext _internalAutoSaveContext = new();
+    InternalAutoSaveContext _internalLocalAutoSaveContext = new();
+    InternalAutoSaveContext _internalGlobalAutoSaveContext = new();
+    InternalAutoSaveContentProvider _internalAutoSaveContentProvider = new();
     AutoSaveManager _autoSaveManager;
     IAutoSaveRecoverer _autoSaveRecoverer;
 
@@ -209,9 +237,13 @@ public partial class MainWindowViewModel : ViewModelBase
         _playerConnection.OnLoadRequired += _playerConnection_OnLoadRequired;
         _playerConnection.OnLoadFinished += _playerConnection_OnLoadFinished;
         _playerConnection.OnDisconnected += _playerConnection_OnDisconnected;
-        AutoSaveManager.Initialize(_internalAutoSaveContext,(IAutoSaveContentProvider<string>)_internalAutoSaveContext);
+        _internalLocalAutoSaveContext = new(_internalAutoSaveContentProvider);
+        _internalGlobalAutoSaveContext = new InternalAutoSaveContext(_internalAutoSaveContentProvider);
+        AutoSaveManager.Initialize(_internalLocalAutoSaveContext, _internalGlobalAutoSaveContext);
         _autoSaveManager = AutoSaveManager.Instance;
         _autoSaveRecoverer = _autoSaveManager.Recoverer;
+
+        _autoSaveManager.OnAutoSaveExecuted += OnAutoSaveExecuted;
     }
 
     public async Task<bool> ConnectToPlayerAsync()
@@ -330,10 +362,10 @@ public partial class MainWindowViewModel : ViewModelBase
             var fileInfo = new FileInfo(maidataPath);
             _maidataDir = fileInfo.Directory.FullName;
             SongTrackInfo = _trackReader.ReadTrack(_maidataDir);
-            IsSaved = true;
+            //IsFumenContextChanged = false;
             _autoSaveManager.Enabled = true;
-            _internalAutoSaveContext.WorkingPath = _maidataDir;
-            _internalAutoSaveContext.Content = await File.ReadAllTextAsync(maidataPath);
+            _internalAutoSaveContentProvider.Content = await File.ReadAllTextAsync(maidataPath);
+            UpdateAutoSaveContext();
             //TODO: Reset view if already loaded?
             await EditorLoad();
         }
@@ -409,10 +441,15 @@ public partial class MainWindowViewModel : ViewModelBase
         }
         return false;
     }
-    public async  void SaveFile()
+    public async void SaveFile()
     {
-        if (CurrentSimaiFile is null) return;
-        IsSaved = true;
+        if (CurrentSimaiFile is null) 
+            return;
+        lock(_fumenContentChangedSyncLock)
+        {
+            IsFumenContextChanged = false;
+            OriginFumen = CurrentFumen;
+        }
         await _simaiParser.DeParseAsync(CurrentSimaiFile, _maidataDir + "/maidata.txt");
     }
     public void OpenBpmTapWindow()
@@ -463,7 +500,7 @@ public partial class MainWindowViewModel : ViewModelBase
         editor.SelectedText = SimaiMirror.HandleMirror(editor.SelectedText, SimaiMirror.HandleType.CcwRotation45);
     }
 
-    private double playStartTime = 0d;
+    
     public async void PlayPause(TextEditor textEditor)
     {
         bool shouldRecoverPlayControl = true;
@@ -529,7 +566,7 @@ public partial class MainWindowViewModel : ViewModelBase
                 IsPlayControlEnabled = true;
         }
     }
-    TextEditor _textEditor;
+    
     private async void _playerConnection_OnPlayStarted(object sender, MajWsResponseType e)
     {
         IsPlayControlEnabled = true;
@@ -562,7 +599,6 @@ public partial class MainWindowViewModel : ViewModelBase
             IsAnimated = true;
         });
     }
-    private bool _isBackToStartOnPlayStop = false;
     public async void Stop(bool isBackToStart = true)
     {
         _isBackToStartOnPlayStop = isBackToStart;
@@ -640,16 +676,26 @@ public partial class MainWindowViewModel : ViewModelBase
         editor.ScrollTo((int)position.Y + 1, (int)position.X);
         editor.Focus();
     }
-
+    void UpdateAutoSaveContext()
+    {
+        _internalLocalAutoSaveContext.RawFilePath = Path.Combine(_maidataDir, "maidata.txt");
+        _internalLocalAutoSaveContext.WorkingPath = Path.Combine(_maidataDir, ".autosave");
+        _internalGlobalAutoSaveContext.RawFilePath = Path.Combine(_maidataDir, "maidata.txt");
+    }
     private async void MainWindowViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
         //Debug.WriteLine(e.PropertyName);
         if (e.PropertyName == nameof(CurrentSimaiFile))
         {
             Debug.WriteLine("SimaiFileChanged");
-            IsSaved = false;
             Stop(false);
-
+            lock(_fumenContentChangedSyncLock)
+            {
+                if(OriginFumen == CurrentFumen)
+                    IsFumenContextChanged = false;
+                else
+                    IsFumenContextChanged = true;
+            }
             lock (_syncLock)
             {
                 if ((DateTime.Now - _lastUpdateAutoSaveContextTime).TotalMilliseconds < AUTOSAVE_CONTEXT_UPDATE_INTERVAL_MS)
@@ -665,7 +711,7 @@ public partial class MainWindowViewModel : ViewModelBase
                 if (CurrentSimaiFile is null)
                     return;
                 var maidata = await SimaiParser.Shared.DeParseAsStringAsync(CurrentSimaiFile);
-                _internalAutoSaveContext.Content = maidata;
+                _internalAutoSaveContentProvider.Content = maidata;
             }
             catch (Exception ex)
             {
@@ -676,6 +722,20 @@ public partial class MainWindowViewModel : ViewModelBase
                 _isUpdatingAutoSaveContext = false;
             }
 
+        }
+    }
+    void OnAutoSaveExecuted(object? sender)
+    {
+        if (!_fumenContentChangedSyncLock.TryEnter())
+            return;
+        try
+        {
+            IsFumenContextChanged = false;
+            OriginFumen = CurrentFumen;
+        }
+        finally
+        {
+            _fumenContentChangedSyncLock.Exit();
         }
     }
     public void AboutButtonClicked(int index)
@@ -715,7 +775,22 @@ public partial class MainWindowViewModel : ViewModelBase
     class InternalAutoSaveContext : IAutoSaveContext, IAutoSaveContentProvider<string>
     {
         public string WorkingPath { get; set; } = Path.Combine(Environment.CurrentDirectory, ".autosave");
+        public string RawFilePath { get; set; } = string.Empty;
+        public string Content => _contentProvider?.Content ?? string.Empty;
+
+        IAutoSaveContentProvider<string>? _contentProvider;
+
+        public InternalAutoSaveContext(IAutoSaveContentProvider<string>? contentProvider)
+        {
+            _contentProvider = contentProvider;
+        }
+        public InternalAutoSaveContext()
+        {
+
+        }
+    }
+    class InternalAutoSaveContentProvider: IAutoSaveContentProvider<string>
+    {
         public string Content { get; set; } = string.Empty;
     }
-
 }

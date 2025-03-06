@@ -234,7 +234,7 @@ public partial class MainWindowViewModel : ViewModelBase
         _autoSaveManager = AutoSaveManager.Instance;
         _autoSaveRecoverer = _autoSaveManager.Recoverer;
 
-        _autoSaveManager.OnAutoSaveExecuted += OnAutoSaveExecuted;
+        //_autoSaveManager.OnAutoSaveExecuted += OnAutoSaveExecuted;
     }
 
     public async Task<bool> ConnectToPlayerAsync()
@@ -692,20 +692,20 @@ public partial class MainWindowViewModel : ViewModelBase
 
         }
     }
-    void OnAutoSaveExecuted(object? sender)
-    {
-        if (!_fumenContentChangedSyncLock.TryEnter())
-            return;
-        try
-        {
-            IsFumenContextChanged = false;
-            OriginFumen = CurrentFumen;
-        }
-        finally
-        {
-            _fumenContentChangedSyncLock.Exit();
-        }
-    }
+    //void OnAutoSaveExecuted(object? sender)
+    //{
+    //    if (!_fumenContentChangedSyncLock.TryEnter())
+    //        return;
+    //    try
+    //    {
+    //        IsFumenContextChanged = false;
+    //        OriginFumen = CurrentFumen;
+    //    }
+    //    finally
+    //    {
+    //        _fumenContentChangedSyncLock.Exit();
+    //    }
+    //}
     public void AboutButtonClicked(int index)
     {
         switch (index)

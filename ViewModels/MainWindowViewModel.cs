@@ -25,6 +25,7 @@ using MajdataEdit_Neo.Modules.AutoSave;
 using MajdataEdit_Neo.Modules.AutoSave.Contexts;
 using System.Runtime.InteropServices;
 using MajdataEdit_Neo.Types;
+using DiscordRPC;
 
 namespace MajdataEdit_Neo.ViewModels;
 
@@ -215,6 +216,18 @@ public partial class MainWindowViewModel : ViewModelBase
 
     readonly string[] _level = new string[7];
     readonly Lock _syncLock = new();
+    readonly DiscordRpcClient _dcRPCClient = new("1068882546932326481");
+    readonly RichPresence _dcRichPresence = new()
+    {
+        Details = "Nothing to do",
+        State = "",
+        Assets = new Assets
+        {
+            LargeImageKey = "salt",
+            LargeImageText = "Majdata",
+            SmallImageKey = "None"
+        }
+    };
     readonly Lock _fumenContentChangedSyncLock = new();
 
     TextEditor _textEditor;
@@ -244,6 +257,7 @@ public partial class MainWindowViewModel : ViewModelBase
         _autoSaveRecoverer = _autoSaveManager.Recoverer;
 
         _autoSaveManager.OnAutoSaveExecuted += OnAutoSaveExecuted;
+        _dcRPCClient.SetPresence(_dcRichPresence);
     }
 
     public async Task<bool> ConnectToPlayerAsync()

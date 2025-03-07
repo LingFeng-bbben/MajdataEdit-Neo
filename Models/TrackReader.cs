@@ -13,7 +13,7 @@ class TrackReader : IDisposable
 {
     public TrackReader()
     {
-        Bass.Init();
+        Bass.Init(Bass.NoSoundDevice);
     }
 
     public void Dispose()
